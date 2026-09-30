@@ -25,7 +25,8 @@ enum class TestType {
     VOLUME_BUTTONS,
     BLUETOOTH,
     CHARGING,
-    HEADSET
+    HEADSET,
+    VULKAN
 }
 
 data class DiagnosticTestItem(

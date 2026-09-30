@@ -14,21 +14,14 @@
                 android:startX="0"
                 android:startY="0"
                 android:type="linear">
-                <item android:color="#FF5722" android:offset="0.0" />
-                <item android:color="#E64A19" android:offset="0.5" />
-                <item android:color="#BF360C" android:offset="1.0" />
+                <item android:color="#1A1C23" android:offset="0.0" />
+                <item android:color="#121318" android:offset="0.6" />
+                <item android:color="#0A0B0E" android:offset="1.0" />
             </gradient>
         </aapt:attr>
     </path>
-    <!-- Subtle high-tech geometric circuit traces in background -->
+    <!-- Subtle luxury glow circle behind the emblem -->
     <path
-        android:pathData="M18,30 L36,30 L48,42 M90,78 L72,78 L60,66 M24,84 L40,84 L50,74 M84,24 L68,24 L58,34"
-        android:strokeWidth="1.5"
-        android:strokeColor="#33FFFFFF"
-        android:strokeLineCap="round" />
-    <path
-        android:pathData="M48,42 A2,2 0 1,1 48,42.01 M60,66 A2,2 0 1,1 60,66.01 M50,74 A2,2 0 1,1 50,74.01 M58,34 A2,2 0 1,1 58,34.01"
-        android:strokeWidth="2.5"
-        android:strokeColor="#66FFFFFF"
-        android:strokeLineCap="round" />
+        android:fillColor="#15FF6D00"
+        android:pathData="M54,54m-38,0a38,38 0,1,1 76,0a38,38 0,1,1 -76,0" />
 </vector>

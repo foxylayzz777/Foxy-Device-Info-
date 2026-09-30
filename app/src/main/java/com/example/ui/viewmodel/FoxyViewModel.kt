@@ -79,12 +79,27 @@ class FoxyViewModel(application: Application) : AndroidViewModel(application) {
     private val _isFloatingHudEnabled = MutableStateFlow(false)
     val isFloatingHudEnabled: StateFlow<Boolean> = _isFloatingHudEnabled.asStateFlow()
 
+    // Themes
+    private val _themeStyle = MutableStateFlow(com.example.ui.theme.AppThemeStyle.FOXY)
+    val themeStyle: StateFlow<com.example.ui.theme.AppThemeStyle> = _themeStyle.asStateFlow()
+
+    private val _themeMode = MutableStateFlow(com.example.ui.theme.AppThemeMode.SYSTEM)
+    val themeMode: StateFlow<com.example.ui.theme.AppThemeMode> = _themeMode.asStateFlow()
+
     private var monitorJob: Job? = null
 
     init {
         refreshDeviceInfo()
         startMetricsCollection()
         loadApps()
+    }
+
+    fun setThemeStyle(style: com.example.ui.theme.AppThemeStyle) {
+        _themeStyle.value = style
+    }
+
+    fun setThemeMode(mode: com.example.ui.theme.AppThemeMode) {
+        _themeMode.value = mode
     }
 
     fun refreshDeviceInfo() {

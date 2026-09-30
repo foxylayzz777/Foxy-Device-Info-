@@ -224,6 +224,23 @@ fun HomeScreen(
             )
         }
 
+        // Vulkan Graphics & VulkanMod Card
+        item {
+            val vulkan = deviceInfo?.vulkan
+            MetricCard(
+                title = "Vulkan & VulkanMod",
+                value = vulkan?.apiVersionString ?: "Checking...",
+                subtitle = vulkan?.vulkanModStatus ?: "Hardware 3D Graphics API",
+                icon = Icons.Default.SportsEsports,
+                iconTint = if (vulkan?.isVulkanModSupported == true) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary,
+                badgeText = if (vulkan?.isVulkanModSupported == true) "VulkanMod Ready 🎮" else "Check Info",
+                onClick = {
+                    viewModel.openInteractiveTest(TestType.VULKAN)
+                    onNavigateToTests()
+                }
+            )
+        }
+
         // Detailed Hardware Specs Accordion Card
         item {
             Card(
@@ -284,6 +301,8 @@ fun HomeScreen(
                             InfoRowItem("Sensors Count", "${deviceInfo?.sensors?.size ?: 0} sensors")
                             InfoRowItem("NFC Available", if (deviceInfo?.capabilities?.hasNfc == true) "Yes" else "No")
                             InfoRowItem("Biometrics", if (deviceInfo?.capabilities?.hasFingerprint == true) "Fingerprint Supported" else "Standard")
+                            InfoRowItem("Vulkan API", deviceInfo?.vulkan?.apiVersionString ?: "N/A")
+                            InfoRowItem("VulkanMod Gaming", if (deviceInfo?.vulkan?.isVulkanModSupported == true) "Supported ⚡" else "Not Supported")
 
                             Spacer(modifier = Modifier.height(12.dp))
                             Button(

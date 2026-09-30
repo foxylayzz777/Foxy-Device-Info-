@@ -1,9 +1,13 @@
 package com.example.ui.screens
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -14,12 +18,15 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ui.components.InfoRowItem
+import com.example.ui.theme.AppThemeMode
+import com.example.ui.theme.AppThemeStyle
 import com.example.ui.viewmodel.FoxyViewModel
 import java.util.Locale
 
@@ -36,9 +43,13 @@ fun SettingsScreen(
     val isBenchmarking by viewModel.isBenchmarking.collectAsState()
     val benchmarkProgress by viewModel.benchmarkProgress.collectAsState()
 
+    val currentThemeStyle by viewModel.themeStyle.collectAsState()
+    val currentThemeMode by viewModel.themeMode.collectAsState()
+
     var showWifiAnalyzer by remember { mutableStateOf(false) }
     var showSensorExplorer by remember { mutableStateOf(false) }
-    var showBenchmarkModal by remember { mutableStateOf(false) }
+    var showVulkanDetails by remember { mutableStateOf(true) }
+    var showPrivacyPolicyDialog by remember { mutableStateOf(false) }
 
     LazyColumn(
         modifier = modifier
@@ -47,16 +58,320 @@ fun SettingsScreen(
         verticalArrangement = Arrangement.spacedBy(14.dp),
         contentPadding = PaddingValues(top = 16.dp, bottom = 32.dp)
     ) {
-        // Benchmark Hero Section
+        // 1. YouTube Creator Showcase Card: FoxyPlayzZ
         item {
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(22.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
+                    containerColor = Color(0xFF1E0A0D)
                 )
             ) {
-                Column(modifier = Modifier.padding(20.dp)) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            Brush.linearGradient(
+                                colors = listOf(
+                                    Color(0xFFFF0000).copy(alpha = 0.25f),
+                                    Color(0xFFFF5252).copy(alpha = 0.08f)
+                                )
+                            )
+                        )
+                        .padding(20.dp)
+                ) {
+                    Column {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Surface(
+                                    shape = CircleShape,
+                                    color = Color(0xFFFF0000),
+                                    modifier = Modifier.size(46.dp)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(
+                                            imageVector = Icons.Default.PlayArrow,
+                                            contentDescription = "YouTube",
+                                            tint = Color.White,
+                                            modifier = Modifier.size(28.dp)
+                                        )
+                                    }
+                                }
+
+                                Column {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(
+                                            text = "FoxyPlayzZ",
+                                            style = MaterialTheme.typography.titleLarge,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color.White
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Surface(
+                                            shape = RoundedCornerShape(8.dp),
+                                            color = Color(0xFFFF0000).copy(alpha = 0.85f)
+                                        ) {
+                                            Text(
+                                                text = "CREATOR",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                fontWeight = FontWeight.Bold,
+                                                color = Color.White,
+                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                            )
+                                        }
+                                    }
+                                    Text(
+                                        text = "Created with ❤️ by FoxyPlayzZ on YouTube",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = Color(0xFFE0E0E0)
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        Text(
+                            text = "Check out gaming tests, benchmarks, tech reviews and PojavLauncher/VulkanMod tutorials on the official channel!",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color(0xFFCCCCCC)
+                        )
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Button(
+                            onClick = {
+                                val ytUrl = "https://youtube.com/@foxyplayzz?si=6Dpx1QA49S00zQhJ"
+                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(ytUrl))
+                                context.startActivity(intent)
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFFFF0000),
+                                contentColor = Color.White
+                            ),
+                            shape = RoundedCornerShape(14.dp)
+                        ) {
+                            Icon(Icons.Default.Subscriptions, contentDescription = "Subscribe")
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Visit FoxyPlayzZ on YouTube", fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+        }
+
+        // 2. New Themes Customizer (Gaming, Cyberpunk, Cute, Amoled, Fox, Material You)
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)
+                )
+            ) {
+                Column(modifier = Modifier.padding(18.dp)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Palette,
+                            contentDescription = "Themes",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            text = "App Theme & Visual Style",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    Text(
+                        text = "Choose Theme Style",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Theme style chips
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        items(AppThemeStyle.entries) { style ->
+                            val isSelected = currentThemeStyle == style
+                            FilterChip(
+                                selected = isSelected,
+                                onClick = { viewModel.setThemeStyle(style) },
+                                label = { Text("${style.badge} ${style.displayName}") },
+                                shape = RoundedCornerShape(14.dp),
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    Text(
+                        text = "Theme Mode",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Light / Dark / System Mode
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        AppThemeMode.entries.forEach { mode ->
+                            val isSelected = currentThemeMode == mode
+                            FilterChip(
+                                selected = isSelected,
+                                onClick = { viewModel.setThemeMode(mode) },
+                                label = { Text(mode.displayName) },
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        // 3. Vulkan API & VulkanMod Support Checker Card
+        item {
+            val vulkan = deviceInfo?.vulkan
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)
+                )
+            ) {
+                Column(modifier = Modifier.padding(18.dp)) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { showVulkanDetails = !showVulkanDetails },
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.SportsEsports,
+                                contentDescription = "Vulkan",
+                                tint = if (vulkan?.isVulkanSupported == true) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
+                            )
+                            Column {
+                                Text(
+                                    text = "Vulkan API & VulkanMod Checker",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = vulkan?.apiVersionString ?: "Checking...",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = if (vulkan?.isVulkanModSupported == true) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface
+                        ) {
+                            Text(
+                                text = if (vulkan?.isVulkanModSupported == true) "VulkanMod Ready ⚡" else "Check Info",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = if (vulkan?.isVulkanModSupported == true) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+                        }
+                    }
+
+                    AnimatedVisibility(visible = showVulkanDetails) {
+                        Column(modifier = Modifier.padding(top = 12.dp)) {
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+                            Spacer(modifier = Modifier.height(10.dp))
+
+                            Text(
+                                text = "Compatibility Status",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                text = vulkan?.vulkanModStatus ?: "Not Supported",
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = if (vulkan?.isVulkanModSupported == true) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                            )
+
+                            Spacer(modifier = Modifier.height(10.dp))
+
+                            InfoRowItem("Vulkan API Version", vulkan?.apiVersionString ?: "N/A")
+                            InfoRowItem(
+                                "Hardware Acceleration",
+                                when (vulkan?.hardwareLevel) {
+                                    1 -> "Level 1 (Full Desktop Class)"
+                                    0 -> "Level 0 (Basic Mobile)"
+                                    else -> "None"
+                                }
+                            )
+                            InfoRowItem("Compute Shaders", if ((vulkan?.hardwareComputeLevel ?: -1) >= 0) "Supported (Level ${vulkan?.hardwareComputeLevel})" else "Not Reported")
+                            InfoRowItem("ABI Architecture", if (vulkan?.is64BitAbi == true) "64-Bit (arm64-v8a)" else "32-Bit")
+
+                            Spacer(modifier = Modifier.height(10.dp))
+                            Text(
+                                text = "VulkanMod Gaming Checklist (PojavLauncher / Minecraft):",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+
+                            vulkan?.compatibilityDetails?.forEach { detail ->
+                                Text(
+                                    text = detail,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    modifier = Modifier.padding(vertical = 2.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // 4. Benchmark Hero Section
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.4f)
+                )
+            ) {
+                Column(modifier = Modifier.padding(18.dp)) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
@@ -81,13 +396,13 @@ fun SettingsScreen(
                         if (benchmarkResult != null) {
                             Surface(
                                 shape = RoundedCornerShape(12.dp),
-                                color = MaterialTheme.colorScheme.primary
+                                color = MaterialTheme.colorScheme.secondary
                             ) {
                                 Text(
                                     text = "${benchmarkResult!!.totalBenchmarkScore} pts",
                                     style = MaterialTheme.typography.labelMedium,
                                     fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onPrimary,
+                                    color = MaterialTheme.colorScheme.onSecondary,
                                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
                                 )
                             }
@@ -153,7 +468,7 @@ fun SettingsScreen(
             }
         }
 
-        // Tools & Analyzers
+        // 5. Diagnostics & Analyzers Header
         item {
             Text(
                 text = "Diagnostics & Analyzers",
@@ -340,28 +655,157 @@ fun SettingsScreen(
             }
         }
 
-        // Privacy First Manifesto
+        // Privacy First & Privacy Policy Section
         item {
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(18.dp),
+                shape = RoundedCornerShape(20.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
                 )
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("🛡️", fontSize = 20.sp, modifier = Modifier.padding(end = 8.dp))
-                        Text("Privacy-First Guarantee", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Column(modifier = Modifier.padding(18.dp)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("🛡️", fontSize = 22.sp, modifier = Modifier.padding(end = 10.dp))
+                            Column {
+                                Text(
+                                    text = "Privacy-First Architecture",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = "Zero tracking • 100% on-device operation",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
                     }
-                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
                     Text(
-                        text = "Foxy Device Info operates 100% locally on your phone. No user accounts, zero analytics trackers, zero cloud telemetry. Your hardware data stays strictly yours.",
+                        text = "Foxy Device Info is built with an absolute privacy-first pledge. No accounts, zero cloud telemetry, zero advertising identifiers, and no user data collection of any kind.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    OutlinedButton(
+                        onClick = { showPrivacyPolicyDialog = true },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(Icons.Default.Policy, contentDescription = "Policy")
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Read Complete Privacy Policy")
+                    }
                 }
             }
         }
+    }
+
+    // Comprehensive Privacy Policy Modal Dialog
+    if (showPrivacyPolicyDialog) {
+        AlertDialog(
+            onDismissRequest = { showPrivacyPolicyDialog = false },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("🛡️", fontSize = 24.sp, modifier = Modifier.padding(end = 8.dp))
+                    Text("Privacy Policy", fontWeight = FontWeight.Bold)
+                }
+            },
+            text = {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 420.dp)
+                ) {
+                    item {
+                        Text(
+                            text = "Foxy Device Info — Privacy & Data Protection Policy\nLast Updated: October 2026\nDeveloper: FoxyPlayzZ (YouTube: @foxyplayzz)",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        Text(
+                            text = "1. Zero Personal Data Collection",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "Foxy Device Info does not collect, harvest, store, or transmit any personally identifiable information (PII), device serial numbers, location logs, contacts, photos, or browsing data.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        Text(
+                            text = "2. Diagnostic Permissions Usage",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "• Camera & Flashlight: Accessed strictly when you initiate the Flashlight / Camera Specs diagnostic test. No photos or video frames are ever captured or saved.\n• Microphone (Audio Record): Temporarily sampled in volatile RAM solely during the live Microphone decibel meter test. Audio data is never recorded to disk or transmitted.\n• Bluetooth & Wi-Fi: Queried locally to report connection speed, frequency, and radio availability. No location tracking is performed.\n• Installed Applications: Scanned locally by PackageManager solely for the App & Permission Analyzer tool.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        Text(
+                            text = "3. 100% Offline & Local Execution",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "All CPU, GPU, Vulkan, RAM, Storage, and battery telemetry is calculated directly on your processor. The application operates without requiring internet access or server connectivity.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        Text(
+                            text = "4. Report Export Control",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "Generated device specification reports remain on your device and are only shared if you explicitly initiate an Android system share action.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        Text(
+                            text = "5. Third-Party Services & Ads",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "This application contains zero advertising networks, zero tracking SDKs, and zero telemetry analytics. Developed independently by FoxyPlayzZ.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = { showPrivacyPolicyDialog = false },
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("I Understand")
+                }
+            },
+            shape = RoundedCornerShape(24.dp)
+        )
     }
 }

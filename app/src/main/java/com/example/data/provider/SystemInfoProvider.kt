@@ -46,7 +46,8 @@ class SystemInfoProvider(private val context: Context) {
             network = getNetworkSpec(),
             cameras = getCameraSpecs(),
             sensors = getSensors(),
-            capabilities = getCapabilities()
+            capabilities = getCapabilities(),
+            vulkan = getVulkanSpec()
         )
     }
 
@@ -449,6 +450,103 @@ class SystemInfoProvider(private val context: Context) {
             hasUsbHost = hasUsbHost,
             hasVibrator = hasVib,
             hasCameraFlash = hasFlash
+        )
+    }
+
+    fun getVulkanSpec(): VulkanSpec {
+        val pm = context.packageManager
+        var isSupported = false
+        var rawVersion = 0
+        var hardwareLevel = -1
+        var computeLevel = -1
+
+        try {
+            val features = pm.systemAvailableFeatures
+            for (feat in features) {
+                if (feat.name == null) continue
+                if (feat.name == PackageManager.FEATURE_VULKAN_HARDWARE_VERSION) {
+                    isSupported = true
+                    rawVersion = feat.version
+                } else if (feat.name == PackageManager.FEATURE_VULKAN_HARDWARE_LEVEL) {
+                    hardwareLevel = feat.version
+                } else if (feat.name == PackageManager.FEATURE_VULKAN_HARDWARE_COMPUTE) {
+                    computeLevel = feat.version
+                }
+            }
+        } catch (_: Exception) {}
+
+        // Fallback for devices where FEATURE_VULKAN_HARDWARE_VERSION is reported or supported on Android 7+ (API 24+)
+        if (!isSupported && Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            val hasVulkanLevel = pm.hasSystemFeature(PackageManager.FEATURE_VULKAN_HARDWARE_LEVEL)
+            if (hasVulkanLevel) {
+                isSupported = true
+                rawVersion = (1 shl 22) or (1 shl 12) // Vulkan 1.1 fallback
+                hardwareLevel = 1
+            }
+        }
+
+        val major = if (rawVersion > 0) rawVersion shr 22 else if (isSupported) 1 else 0
+        val minor = if (rawVersion > 0) (rawVersion shr 12) and 0x3FF else if (isSupported) 1 else 0
+        val patch = if (rawVersion > 0) rawVersion and 0xFFF else 0
+
+        val versionStr = if (isSupported && major > 0) {
+            "v$major.$minor.$patch"
+        } else if (isSupported) {
+            "v1.0.0 (Basic)"
+        } else {
+            "Not Supported"
+        }
+
+        val is64Bit = Build.SUPPORTED_ABIS.any { it.contains("64") }
+
+        val compatDetails = mutableListOf<String>()
+        val meetsVersion = major > 1 || (major == 1 && minor >= 1)
+
+        if (meetsVersion) {
+            compatDetails.add("✓ Vulkan API $versionStr (>= 1.1 requirement met)")
+        } else if (isSupported) {
+            compatDetails.add("✗ Vulkan API $versionStr is below required v1.1+")
+        } else {
+            compatDetails.add("✗ No Vulkan API driver reported on device")
+        }
+
+        if (is64Bit) {
+            compatDetails.add("✓ 64-Bit ABI architecture (${Build.SUPPORTED_ABIS.firstOrNull() ?: "arm64-v8a"})")
+        } else {
+            compatDetails.add("✗ 32-Bit CPU architecture (VulkanMod requires 64-bit)")
+        }
+
+        if (hardwareLevel >= 1) {
+            compatDetails.add("✓ Vulkan Hardware Level $hardwareLevel (Desktop-class acceleration)")
+        } else if (hardwareLevel == 0) {
+            compatDetails.add("⚠️ Vulkan Hardware Level 0 (Basic mobile acceleration)")
+        } else {
+            compatDetails.add("✗ No Vulkan Hardware Level reported")
+        }
+
+        if (computeLevel >= 0) {
+            compatDetails.add("✓ Hardware Compute Shaders Supported (Level $computeLevel)")
+        }
+
+        val isVulkanModSupported = isSupported && meetsVersion && is64Bit && hardwareLevel >= 0
+        val modStatus = when {
+            isVulkanModSupported && hardwareLevel >= 1 -> "Fully Compatible 🎮⚡ (Ready for PojavLauncher & VulkanMod)"
+            isVulkanModSupported -> "Compatible with Fallbacks 🎮⚠️ (Level 0 acceleration)"
+            else -> "Not Compatible with VulkanMod ❌"
+        }
+
+        return VulkanSpec(
+            isVulkanSupported = isSupported,
+            apiVersionString = versionStr,
+            majorVersion = major,
+            minorVersion = minor,
+            patchVersion = patch,
+            hardwareLevel = hardwareLevel,
+            hardwareComputeLevel = computeLevel,
+            is64BitAbi = is64Bit,
+            isVulkanModSupported = isVulkanModSupported,
+            vulkanModStatus = modStatus,
+            compatibilityDetails = compatDetails
         )
     }
 }

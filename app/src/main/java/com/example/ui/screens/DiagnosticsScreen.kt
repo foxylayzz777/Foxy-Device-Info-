@@ -398,6 +398,7 @@ fun InteractiveTestModal(
                         TestType.BLUETOOTH -> BluetoothCheckTest(context)
                         TestType.CHARGING -> ChargingCheckTest(viewModel)
                         TestType.HEADSET -> HeadsetCheckTest(viewModel)
+                        TestType.VULKAN -> VulkanDiagnosticTest(viewModel)
                     }
                 }
 
@@ -1190,6 +1191,68 @@ private fun getTestIcon(type: TestType): ImageVector {
         TestType.BLUETOOTH -> Icons.Default.Bluetooth
         TestType.CHARGING -> Icons.Default.BatteryChargingFull
         TestType.HEADSET -> Icons.Default.Headphones
+        TestType.VULKAN -> Icons.Default.SportsEsports
+    }
+}
+
+@Composable
+private fun VulkanDiagnosticTest(viewModel: FoxyViewModel) {
+    val deviceInfo by viewModel.deviceInfo.collectAsState()
+    val vulkan = deviceInfo?.vulkan
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(
+            imageVector = Icons.Default.SportsEsports,
+            contentDescription = "Vulkan",
+            modifier = Modifier.size(56.dp),
+            tint = if (vulkan?.isVulkanSupported == true) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        Text(
+            text = "Vulkan API: ${vulkan?.apiVersionString ?: "Checking..."}",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = vulkan?.vulkanModStatus ?: "Checking hardware support...",
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold,
+            color = if (vulkan?.isVulkanModSupported == true) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+            textAlign = TextAlign.Center
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(14.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            )
+        ) {
+            Column(modifier = Modifier.padding(14.dp)) {
+                Text(
+                    text = "VulkanMod Gaming Checklist",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                vulkan?.compatibilityDetails?.forEach { item ->
+                    Text(
+                        text = item,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(vertical = 2.dp)
+                    )
+                }
+            }
+        }
     }
 }
 

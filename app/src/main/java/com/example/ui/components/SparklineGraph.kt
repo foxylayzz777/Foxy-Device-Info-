@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -24,7 +25,7 @@ fun SparklineGraph(
     maxValue: Float? = null,
     showGrid: Boolean = true
 ) {
-    val gridColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
+    val gridColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)
     val gradientColors = listOf(
         lineColor.copy(alpha = 0.35f),
         lineColor.copy(alpha = 0.0f)
@@ -34,6 +35,7 @@ fun SparklineGraph(
         modifier = modifier
             .fillMaxWidth()
             .height(height)
+            .clipToBounds()
     ) {
         val width = size.width
         val canvasHeight = size.height
@@ -54,7 +56,17 @@ fun SparklineGraph(
             )
         }
 
-        if (dataPoints.size < 2) return@Canvas
+        if (dataPoints.size < 2) {
+            // Idle placeholder line
+            drawLine(
+                color = lineColor.copy(alpha = 0.4f),
+                start = Offset(0f, canvasHeight * 0.8f),
+                end = Offset(width, canvasHeight * 0.8f),
+                strokeWidth = 1.5.dp.toPx(),
+                cap = StrokeCap.Round
+            )
+            return@Canvas
+        }
 
         val maxVal = maxValue ?: (dataPoints.maxOrNull()?.coerceAtLeast(10f) ?: 100f)
         val minVal = 0f
@@ -67,7 +79,7 @@ fun SparklineGraph(
 
         val points = dataPoints.mapIndexed { index, value ->
             val normY = (1f - ((value - minVal) / range)).coerceIn(0f, 1f)
-            Offset(index * stepX, normY * (canvasHeight - 8.dp.toPx()) + 4.dp.toPx())
+            Offset(index * stepX, normY * (canvasHeight - 12.dp.toPx()) + 6.dp.toPx())
         }
 
         linePath.moveTo(points.first().x, points.first().y)
@@ -109,7 +121,7 @@ fun SparklineGraph(
         val lastPoint = points.last()
         drawCircle(
             color = lineColor,
-            radius = 4.dp.toPx(),
+            radius = 4.5.dp.toPx(),
             center = lastPoint
         )
         drawCircle(

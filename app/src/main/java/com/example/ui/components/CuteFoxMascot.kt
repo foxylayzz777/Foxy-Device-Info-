@@ -142,7 +142,8 @@ fun StatusPill(
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(16.dp),
-        color = color.copy(alpha = 0.12f)
+        color = color.copy(alpha = 0.16f),
+        border = androidx.compose.foundation.BorderStroke(1.dp, color.copy(alpha = 0.28f))
     ) {
         Column(
             modifier = Modifier.padding(vertical = 8.dp, horizontal = 10.dp),

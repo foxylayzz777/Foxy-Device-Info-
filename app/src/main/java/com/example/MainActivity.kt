@@ -42,8 +42,11 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            FoxyTheme {
-                val viewModel: FoxyViewModel = viewModel()
+            val viewModel: FoxyViewModel = viewModel()
+            val themeStyle by viewModel.themeStyle.collectAsState()
+            val themeMode by viewModel.themeMode.collectAsState()
+
+            FoxyTheme(themeStyle = themeStyle, themeMode = themeMode) {
                 FoxyApp(viewModel = viewModel)
             }
         }
@@ -63,7 +66,6 @@ fun FoxyApp(viewModel: FoxyViewModel) {
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
-        contentWindowInsets = WindowInsets.safeDrawing,
         topBar = {
             TopAppBar(
                 title = {

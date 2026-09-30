@@ -144,6 +144,12 @@ class HardwareDiagnosticsManager(private val context: Context) {
                 title = "Headphone / Audio Jack",
                 description = "Detect wired 3.5mm jack or Type-C audio accessory connection",
                 iconName = "headphones"
+            ),
+            DiagnosticTestItem(
+                type = TestType.VULKAN,
+                title = "Vulkan API & VulkanMod",
+                description = "Inspect Vulkan graphics API, driver level and VulkanMod gaming support",
+                iconName = "sports_esports"
             )
         )
     }

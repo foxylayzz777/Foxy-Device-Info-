@@ -102,6 +102,20 @@ data class CapabilitiesSpec(
     val hasCameraFlash: Boolean
 )
 
+data class VulkanSpec(
+    val isVulkanSupported: Boolean,
+    val apiVersionString: String,
+    val majorVersion: Int,
+    val minorVersion: Int,
+    val patchVersion: Int,
+    val hardwareLevel: Int, // 0 = Level 0 (basic), 1 = Level 1 (full hardware)
+    val hardwareComputeLevel: Int,
+    val is64BitAbi: Boolean,
+    val isVulkanModSupported: Boolean,
+    val vulkanModStatus: String,
+    val compatibilityDetails: List<String>
+)
+
 data class FullDeviceInfo(
     val summary: DeviceSummary,
     val cpu: CpuSpec,
@@ -111,5 +125,18 @@ data class FullDeviceInfo(
     val network: NetworkSpec,
     val cameras: List<CameraSpec>,
     val sensors: List<SensorItem>,
-    val capabilities: CapabilitiesSpec
+    val capabilities: CapabilitiesSpec,
+    val vulkan: VulkanSpec = VulkanSpec(
+        isVulkanSupported = false,
+        apiVersionString = "Not Supported",
+        majorVersion = 0,
+        minorVersion = 0,
+        patchVersion = 0,
+        hardwareLevel = -1,
+        hardwareComputeLevel = -1,
+        is64BitAbi = false,
+        isVulkanModSupported = false,
+        vulkanModStatus = "Not Supported",
+        compatibilityDetails = emptyList()
+    )
 )
