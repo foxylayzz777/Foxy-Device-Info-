@@ -18,6 +18,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+
 @Composable
 fun MetricCard(
     title: String,
@@ -35,14 +39,15 @@ fun MetricCard(
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .then(if (onClick != null) Modifier.clickable { onClick() } else Modifier),
-        shape = RoundedCornerShape(20.dp),
+            .then(if (onClick != null) Modifier.smoothInteractiveClick { onClick() } else Modifier),
+        shape = RoundedCornerShape(22.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.75f),
+            contentColor = MaterialTheme.colorScheme.onSurface
         ),
-        border = androidx.compose.foundation.BorderStroke(
-            1.dp,
-            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f)
+        border = liquidGlassBorder(
+            strokeWidth = 1.dp,
+            glowColor = iconTint
         )
     ) {
         Column(
@@ -56,6 +61,7 @@ fun MetricCard(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Row(
+                    modifier = Modifier.weight(1f, fill = false),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
@@ -77,21 +83,44 @@ fun MetricCard(
                         text = title,
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
 
                 if (badgeText != null) {
+                    val resolvedBadgeTextColor = when (badgeColor) {
+                        MaterialTheme.colorScheme.primaryContainer -> MaterialTheme.colorScheme.onPrimaryContainer
+                        MaterialTheme.colorScheme.secondaryContainer -> MaterialTheme.colorScheme.onSecondaryContainer
+                        MaterialTheme.colorScheme.tertiaryContainer -> MaterialTheme.colorScheme.onTertiaryContainer
+                        MaterialTheme.colorScheme.errorContainer -> MaterialTheme.colorScheme.onErrorContainer
+                        MaterialTheme.colorScheme.surfaceVariant -> MaterialTheme.colorScheme.onSurfaceVariant
+                        MaterialTheme.colorScheme.surface -> MaterialTheme.colorScheme.onSurface
+                        else -> {
+                            val candidate = MaterialTheme.colorScheme.contentColorFor(badgeColor)
+                            if (candidate != Color.Unspecified) {
+                                candidate
+                            } else if (badgeColor.luminance() > 0.45f) {
+                                Color(0xFF0A152B)
+                            } else {
+                                Color(0xFFFFFFFF)
+                            }
+                        }
+                    }
                     Surface(
                         shape = RoundedCornerShape(12.dp),
                         color = badgeColor,
-                        modifier = Modifier.padding(start = 4.dp)
+                        contentColor = resolvedBadgeTextColor,
+                        modifier = Modifier.padding(start = 8.dp)
                     ) {
                         Text(
                             text = badgeText,
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            color = resolvedBadgeTextColor,
                             fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                         )
                     }
@@ -152,13 +181,17 @@ fun InfoRowItem(
         Text(
             text = label,
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(0.42f, fill = false)
         )
+        Spacer(modifier = Modifier.width(10.dp))
         Text(
             text = value,
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Medium,
-            color = MaterialTheme.colorScheme.onSurface
+            color = MaterialTheme.colorScheme.onSurface,
+            textAlign = TextAlign.End,
+            modifier = Modifier.weight(0.58f, fill = false)
         )
     }
 }

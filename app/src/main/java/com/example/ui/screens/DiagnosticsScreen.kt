@@ -83,7 +83,8 @@ fun DiagnosticsScreen(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(24.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                    contentColor = MaterialTheme.colorScheme.onSurface
                 )
             ) {
                 Column(modifier = Modifier.padding(20.dp)) {
@@ -96,7 +97,8 @@ fun DiagnosticsScreen(
                             Text(
                                 text = "Hardware Health",
                                 style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
                                 text = "$passedCount passed • $failedCount failed",
@@ -177,7 +179,13 @@ fun DiagnosticsScreen(
                         selected = selectedFilter == filter,
                         onClick = { selectedFilter = filter },
                         label = { Text(filter) },
-                        shape = RoundedCornerShape(12.dp)
+                        shape = RoundedCornerShape(12.dp),
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
+                            labelColor = MaterialTheme.colorScheme.onSurface
+                        )
                     )
                 }
             }
@@ -214,7 +222,8 @@ fun DiagnosticTestCard(
             .clickable(enabled = item.status != TestStatus.NOT_SUPPORTED) { onTestClick() },
         shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+            contentColor = MaterialTheme.colorScheme.onSurface
         )
     ) {
         Row(
@@ -347,6 +356,7 @@ fun InteractiveTestModal(
                 .padding(16.dp),
             shape = RoundedCornerShape(24.dp),
             color = MaterialTheme.colorScheme.surface,
+            contentColor = MaterialTheme.colorScheme.onSurface,
             tonalElevation = 6.dp
         ) {
             Column(
@@ -365,7 +375,8 @@ fun InteractiveTestModal(
                     Text(
                         text = "Hardware Test: ${testType.name.replace("_", " ")}",
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     IconButton(onClick = onDismiss) {
                         Icon(Icons.Default.Close, contentDescription = "Close")
@@ -540,7 +551,8 @@ private fun SpeakerToneTest(viewModel: FoxyViewModel, isEarpiece: Boolean) {
         Text(
             text = if (isEarpiece) "Call Receiver Earpiece Test" else "Main Loudspeaker Test",
             style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
@@ -596,7 +608,8 @@ private fun MicrophoneDecibelTest() {
         Text(
             text = "Speak into device microphone",
             style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
@@ -633,7 +646,8 @@ private fun VibrationInteractiveTest(viewModel: FoxyViewModel) {
         Text(
             text = "Test Haptic Motor",
             style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
@@ -678,7 +692,8 @@ private fun FlashlightInteractiveTest(viewModel: FoxyViewModel) {
         Text(
             text = "Camera LED Flashlight",
             style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
@@ -755,7 +770,8 @@ private fun ProximityInteractiveTest(context: Context) {
         Spacer(modifier = Modifier.height(8.dp))
         Text(
             text = "Distance readout: $distance cm",
-            style = MaterialTheme.typography.labelMedium
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurface
         )
     }
 }
@@ -806,7 +822,8 @@ private fun LightSensorInteractiveTest(context: Context) {
         Text(
             text = "${lux.toInt()} Lux",
             style = MaterialTheme.typography.displaySmall,
-            fontWeight = FontWeight.Bold
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
@@ -883,7 +900,8 @@ private fun AccelerometerLevelTest(context: Context) {
         Text(
             text = "X: ${String.format("%.1f", xVal)} | Y: ${String.format("%.1f", yVal)} | Z: ${String.format("%.1f", zVal)}",
             style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface
         )
         Text(
             text = "Tilt device to check 3-axis motion level",
@@ -935,13 +953,15 @@ private fun GyroscopeInteractiveTest(context: Context) {
         Text(
             text = "Rotational Velocity",
             style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
             text = "Yaw (Z): ${String.format("%.2f", rz)} rad/s\nPitch (X): ${String.format("%.2f", rx)} rad/s\nRoll (Y): ${String.format("%.2f", ry)} rad/s",
             style = MaterialTheme.typography.bodyLarge,
-            textAlign = TextAlign.Center
+            textAlign = TextAlign.Center,
+            color = MaterialTheme.colorScheme.onSurface
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
@@ -991,7 +1011,8 @@ private fun CompassInteractiveTest(context: Context) {
         Text(
             text = "$heading°",
             style = MaterialTheme.typography.displaySmall,
-            fontWeight = FontWeight.Bold
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface
         )
         Text(
             text = direction,
@@ -1021,7 +1042,8 @@ private fun FingerprintInteractiveTest(context: Context) {
         Text(
             text = if (hasFingerprint) "Biometric Hardware Ready" else "No Hardware Sensor",
             style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
@@ -1053,7 +1075,8 @@ private fun VolumeButtonsInteractiveTest() {
         Text(
             text = "Physical Volume Keys",
             style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface
         )
         Spacer(modifier = Modifier.height(12.dp))
 
@@ -1061,7 +1084,8 @@ private fun VolumeButtonsInteractiveTest() {
             Button(
                 onClick = { volUpPressed = true },
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = if (volUpPressed) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
+                    containerColor = if (volUpPressed) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                    contentColor = if (volUpPressed) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
                 )
             ) {
                 Text(if (volUpPressed) "Vol Up ✓" else "Tap Vol Up")
@@ -1069,7 +1093,8 @@ private fun VolumeButtonsInteractiveTest() {
             Button(
                 onClick = { volDownPressed = true },
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = if (volDownPressed) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
+                    containerColor = if (volDownPressed) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                    contentColor = if (volDownPressed) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
                 )
             ) {
                 Text(if (volDownPressed) "Vol Down ✓" else "Tap Vol Down")
@@ -1099,12 +1124,14 @@ private fun BluetoothCheckTest(context: Context) {
         Text(
             text = if (hasBt) "Bluetooth Supported" else "Bluetooth Not Available",
             style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
             text = "Classic Bluetooth: ${if (hasBt) "Yes" else "No"}\nBluetooth Low Energy (BLE): ${if (hasBle) "Yes" else "No"}",
             style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface,
             textAlign = TextAlign.Center
         )
     }
@@ -1129,7 +1156,8 @@ private fun ChargingCheckTest(viewModel: FoxyViewModel) {
         Text(
             text = if (isCharging) "Charger Connected! ⚡" else "On Battery (Unplugged)",
             style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
@@ -1160,7 +1188,8 @@ private fun HeadsetCheckTest(viewModel: FoxyViewModel) {
         Text(
             text = if (isPlugged) "Headset Connected 🎧" else "No Wired Headset Detected",
             style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
@@ -1217,7 +1246,8 @@ private fun VulkanDiagnosticTest(viewModel: FoxyViewModel) {
         Text(
             text = "Vulkan API: ${vulkan?.apiVersionString ?: "Checking..."}",
             style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
@@ -1234,20 +1264,23 @@ private fun VulkanDiagnosticTest(viewModel: FoxyViewModel) {
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(14.dp),
             colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                contentColor = MaterialTheme.colorScheme.onSurface
             )
         ) {
             Column(modifier = Modifier.padding(14.dp)) {
                 Text(
                     text = "VulkanMod Gaming Checklist",
                     style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 vulkan?.compatibilityDetails?.forEach { item ->
                     Text(
                         text = item,
                         style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.padding(vertical = 2.dp)
                     )
                 }

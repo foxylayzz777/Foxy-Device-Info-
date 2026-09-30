@@ -12,7 +12,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.runtime.getValue
+
 enum class AppThemeStyle(val displayName: String, val badge: String) {
+    LIQUID_GLASS("Liquid Glass", "🫧"),
     FOXY("Classic Fox", "🦊"),
     GAMING("RGB Gaming", "🎮"),
     CYBERPUNK("Cyberpunk", "⚡"),
@@ -221,9 +227,96 @@ private val AmoledDarkScheme = darkColorScheme(
     outlineVariant = Color(0xFF262626)
 )
 
+// 6. Liquid Glass (Translucent Frosted Glass with Liquid Neon Azure & Opal accents)
+private val LiquidGlassDarkScheme = darkColorScheme(
+    primary = Color(0xFF00E5FF),
+    onPrimary = Color(0xFF001F29),
+    primaryContainer = Color(0xFF004D61),
+    onPrimaryContainer = Color(0xFFB8EAFF),
+    secondary = Color(0xFFB388FF),
+    onSecondary = Color(0xFF24005A),
+    secondaryContainer = Color(0xFF3F1D7A),
+    onSecondaryContainer = Color(0xFFEADBFF),
+    tertiary = Color(0xFF64FFDA),
+    onTertiary = Color(0xFF00382E),
+    background = Color(0xFF040814),
+    onBackground = Color(0xFFE6F1FF),
+    surface = Color(0xFF0A152B),
+    onSurface = Color(0xFFE6F1FF),
+    surfaceVariant = Color(0xFF102142),
+    onSurfaceVariant = Color(0xFFB0CBE8),
+    outline = Color(0xFF00B0FF),
+    outlineVariant = Color(0xFF1A355E)
+)
+
+private val LiquidGlassLightScheme = lightColorScheme(
+    primary = Color(0xFF007799),
+    onPrimary = Color.White,
+    primaryContainer = Color(0xFFBFE9FF),
+    onPrimaryContainer = Color(0xFF001F29),
+    secondary = Color(0xFF6200EA),
+    onSecondary = Color.White,
+    secondaryContainer = Color(0xFFEADBFF),
+    onSecondaryContainer = Color(0xFF24005A),
+    tertiary = Color(0xFF00897B),
+    onTertiary = Color.White,
+    background = Color(0xFFEFF5FD),
+    onBackground = Color(0xFF0B1B33),
+    surface = Color(0xFFFFFFFF),
+    onSurface = Color(0xFF0B1B33),
+    surfaceVariant = Color(0xFFDBE8F8),
+    onSurfaceVariant = Color(0xFF244368),
+    outline = Color(0xFF0288D1),
+    outlineVariant = Color(0xFFB8D3F2)
+)
+
+@Composable
+private fun animateColorScheme(target: ColorScheme): ColorScheme {
+    val animSpec = tween<Color>(durationMillis = 400, easing = FastOutSlowInEasing)
+    val primary by animateColorAsState(target.primary, animSpec, label = "primary")
+    val onPrimary by animateColorAsState(target.onPrimary, animSpec, label = "onPrimary")
+    val primaryContainer by animateColorAsState(target.primaryContainer, animSpec, label = "primaryContainer")
+    val onPrimaryContainer by animateColorAsState(target.onPrimaryContainer, animSpec, label = "onPrimaryContainer")
+    val secondary by animateColorAsState(target.secondary, animSpec, label = "secondary")
+    val onSecondary by animateColorAsState(target.onSecondary, animSpec, label = "onSecondary")
+    val secondaryContainer by animateColorAsState(target.secondaryContainer, animSpec, label = "secondaryContainer")
+    val onSecondaryContainer by animateColorAsState(target.onSecondaryContainer, animSpec, label = "onSecondaryContainer")
+    val tertiary by animateColorAsState(target.tertiary, animSpec, label = "tertiary")
+    val onTertiary by animateColorAsState(target.onTertiary, animSpec, label = "onTertiary")
+    val background by animateColorAsState(target.background, animSpec, label = "background")
+    val onBackground by animateColorAsState(target.onBackground, animSpec, label = "onBackground")
+    val surface by animateColorAsState(target.surface, animSpec, label = "surface")
+    val onSurface by animateColorAsState(target.onSurface, animSpec, label = "onSurface")
+    val surfaceVariant by animateColorAsState(target.surfaceVariant, animSpec, label = "surfaceVariant")
+    val onSurfaceVariant by animateColorAsState(target.onSurfaceVariant, animSpec, label = "onSurfaceVariant")
+    val outline by animateColorAsState(target.outline, animSpec, label = "outline")
+    val outlineVariant by animateColorAsState(target.outlineVariant, animSpec, label = "outlineVariant")
+
+    return target.copy(
+        primary = primary,
+        onPrimary = onPrimary,
+        primaryContainer = primaryContainer,
+        onPrimaryContainer = onPrimaryContainer,
+        secondary = secondary,
+        onSecondary = onSecondary,
+        secondaryContainer = secondaryContainer,
+        onSecondaryContainer = onSecondaryContainer,
+        tertiary = tertiary,
+        onTertiary = onTertiary,
+        background = background,
+        onBackground = onBackground,
+        surface = surface,
+        onSurface = onSurface,
+        surfaceVariant = surfaceVariant,
+        onSurfaceVariant = onSurfaceVariant,
+        outline = outline,
+        outlineVariant = outlineVariant
+    )
+}
+
 @Composable
 fun FoxyTheme(
-    themeStyle: AppThemeStyle = AppThemeStyle.FOXY,
+    themeStyle: AppThemeStyle = AppThemeStyle.LIQUID_GLASS,
     themeMode: AppThemeMode = AppThemeMode.SYSTEM,
     content: @Composable () -> Unit
 ) {
@@ -236,20 +329,23 @@ fun FoxyTheme(
 
     val context = LocalContext.current
 
-    val colorScheme: ColorScheme = when (themeStyle) {
+    val rawColorScheme: ColorScheme = when (themeStyle) {
+        AppThemeStyle.LIQUID_GLASS -> if (isDark) LiquidGlassDarkScheme else LiquidGlassLightScheme
         AppThemeStyle.DYNAMIC -> {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 if (isDark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
             } else {
-                if (isDark) FoxyDarkScheme else FoxyLightScheme
+                if (isDark) LiquidGlassDarkScheme else LiquidGlassLightScheme
             }
         }
         AppThemeStyle.GAMING -> if (isDark) GamingDarkScheme else GamingLightScheme
         AppThemeStyle.CYBERPUNK -> if (isDark) CyberpunkDarkScheme else CyberpunkLightScheme
         AppThemeStyle.CUTE -> if (isDark) CuteDarkScheme else CuteLightScheme
-        AppThemeStyle.AMOLED -> if (isDark) AmoledDarkScheme else FoxyLightScheme
+        AppThemeStyle.AMOLED -> if (isDark) AmoledDarkScheme else LiquidGlassLightScheme
         AppThemeStyle.FOXY -> if (isDark) FoxyDarkScheme else FoxyLightScheme
     }
+
+    val colorScheme = animateColorScheme(rawColorScheme)
 
     MaterialTheme(
         colorScheme = colorScheme,

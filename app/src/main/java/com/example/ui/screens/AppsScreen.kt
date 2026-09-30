@@ -55,16 +55,21 @@ fun AppsScreen(
         PrimaryTabRow(
             selectedTabIndex = selectedTab,
             containerColor = Color.Transparent,
+            contentColor = MaterialTheme.colorScheme.primary,
             modifier = Modifier.padding(top = 12.dp, bottom = 8.dp)
         ) {
             Tab(
                 selected = selectedTab == 0,
                 onClick = { selectedTab = 0 },
+                selectedContentColor = MaterialTheme.colorScheme.primary,
+                unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                 text = { Text("Installed Apps (${filteredApps.size})", fontWeight = FontWeight.SemiBold) }
             )
             Tab(
                 selected = selectedTab == 1,
                 onClick = { selectedTab = 1 },
+                selectedContentColor = MaterialTheme.colorScheme.primary,
+                unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                 text = { Text("Permission Analyzer", fontWeight = FontWeight.SemiBold) }
             )
         }
@@ -92,6 +97,16 @@ fun AppsScreen(
                         }
                     },
                     shape = RoundedCornerShape(16.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.75f),
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f),
+                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        focusedPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        unfocusedPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        focusedLeadingIconColor = MaterialTheme.colorScheme.primary,
+                        unfocusedLeadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    ),
                     singleLine = true
                 )
 
@@ -99,7 +114,13 @@ fun AppsScreen(
                     selected = filterIncludeSystem,
                     onClick = { viewModel.setFilterIncludeSystem(!filterIncludeSystem) },
                     label = { Text("System") },
-                    shape = RoundedCornerShape(14.dp)
+                    shape = RoundedCornerShape(14.dp),
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                        selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
+                        labelColor = MaterialTheme.colorScheme.onSurface
+                    )
                 )
             }
 
@@ -132,7 +153,8 @@ fun AppsScreen(
                     Text(
                         text = "Dangerous Permissions Audit",
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
                         text = "Inspect which applications have access to sensitive hardware and personal user data.",
@@ -184,7 +206,8 @@ fun AppsScreen(
                         Text(
                             text = app.appName,
                             style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
                             text = app.packageName,
@@ -200,19 +223,19 @@ fun AppsScreen(
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Column {
+                    Column(modifier = Modifier.weight(1f)) {
                         Text("Version", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text(app.versionName, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                        Text(app.versionName, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
                     }
-                    Column {
+                    Column(modifier = Modifier.weight(1f)) {
                         Text("Target SDK", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text("API ${app.targetSdkVersion}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                        Text("API ${app.targetSdkVersion}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
                     }
-                    Column {
+                    Column(modifier = Modifier.weight(1f)) {
                         Text("Size", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text(String.format(Locale.US, "%.1f MB", app.apkSizeBytes / (1024.0 * 1024.0)), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                        Text(String.format(Locale.US, "%.1f MB", app.apkSizeBytes / (1024.0 * 1024.0)), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
                     }
                 }
 
@@ -255,7 +278,8 @@ fun AppsScreen(
                 Text(
                     text = "Requested Permissions (${app.permissions.size})",
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Spacer(modifier = Modifier.height(8.dp))
 
@@ -309,7 +333,8 @@ private fun AppItemCard(
             .clickable { onClick() },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+            contentColor = MaterialTheme.colorScheme.onSurface
         )
     ) {
         Row(
@@ -350,13 +375,14 @@ private fun AppItemCard(
 
             Surface(
                 shape = RoundedCornerShape(10.dp),
-                color = MaterialTheme.colorScheme.surface
+                color = MaterialTheme.colorScheme.surface,
+                contentColor = MaterialTheme.colorScheme.onSurface
             ) {
                 Text(
                     text = String.format(Locale.US, "%.0f MB", app.apkSizeBytes / (1024.0 * 1024.0)),
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                 )
             }
@@ -372,7 +398,8 @@ private fun PermissionGroupCard(summary: com.example.data.model.PermissionCatego
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
+            contentColor = MaterialTheme.colorScheme.onSurface
         )
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -414,7 +441,8 @@ private fun PermissionGroupCard(summary: com.example.data.model.PermissionCatego
                         Text(
                             text = summary.permissionName,
                             style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
                             text = "${summary.grantedAppCount} apps have access",
@@ -427,7 +455,8 @@ private fun PermissionGroupCard(summary: com.example.data.model.PermissionCatego
                 IconButton(onClick = { isExpanded = !isExpanded }) {
                     Icon(
                         imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                        contentDescription = "Expand"
+                        contentDescription = "Expand",
+                        tint = MaterialTheme.colorScheme.onSurface
                     )
                 }
             }
@@ -443,7 +472,8 @@ private fun PermissionGroupCard(summary: com.example.data.model.PermissionCatego
                     summary.apps.forEach { appName ->
                         Text(
                             text = "• $appName",
-                            style = MaterialTheme.typography.bodyMedium,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface,
                             modifier = Modifier.padding(vertical = 2.dp)
                         )
                     }

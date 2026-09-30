@@ -48,7 +48,6 @@ fun SettingsScreen(
 
     var showWifiAnalyzer by remember { mutableStateOf(false) }
     var showSensorExplorer by remember { mutableStateOf(false) }
-    var showVulkanDetails by remember { mutableStateOf(true) }
     var showPrivacyPolicyDialog by remember { mutableStateOf(false) }
 
     LazyColumn(
@@ -174,7 +173,8 @@ fun SettingsScreen(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(20.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
+                    contentColor = MaterialTheme.colorScheme.onSurface
                 )
             ) {
                 Column(modifier = Modifier.padding(18.dp)) {
@@ -190,7 +190,8 @@ fun SettingsScreen(
                         Text(
                             text = "App Theme & Visual Style",
                             style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     }
 
@@ -218,7 +219,9 @@ fun SettingsScreen(
                                 shape = RoundedCornerShape(14.dp),
                                 colors = FilterChipDefaults.filterChipColors(
                                     selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    containerColor = MaterialTheme.colorScheme.surface,
+                                    labelColor = MaterialTheme.colorScheme.onSurface
                                 )
                             )
                         }
@@ -246,6 +249,12 @@ fun SettingsScreen(
                                 onClick = { viewModel.setThemeMode(mode) },
                                 label = { Text(mode.displayName) },
                                 shape = RoundedCornerShape(12.dp),
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    containerColor = MaterialTheme.colorScheme.surface,
+                                    labelColor = MaterialTheme.colorScheme.onSurface
+                                ),
                                 modifier = Modifier.weight(1f)
                             )
                         }
@@ -254,121 +263,14 @@ fun SettingsScreen(
             }
         }
 
-        // 3. Vulkan API & VulkanMod Support Checker Card
-        item {
-            val vulkan = deviceInfo?.vulkan
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)
-                )
-            ) {
-                Column(modifier = Modifier.padding(18.dp)) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { showVulkanDetails = !showVulkanDetails },
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.SportsEsports,
-                                contentDescription = "Vulkan",
-                                tint = if (vulkan?.isVulkanSupported == true) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
-                            )
-                            Column {
-                                Text(
-                                    text = "Vulkan API & VulkanMod Checker",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                Text(
-                                    text = vulkan?.apiVersionString ?: "Checking...",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-
-                        Surface(
-                            shape = RoundedCornerShape(12.dp),
-                            color = if (vulkan?.isVulkanModSupported == true) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface
-                        ) {
-                            Text(
-                                text = if (vulkan?.isVulkanModSupported == true) "VulkanMod Ready ⚡" else "Check Info",
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = if (vulkan?.isVulkanModSupported == true) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                            )
-                        }
-                    }
-
-                    AnimatedVisibility(visible = showVulkanDetails) {
-                        Column(modifier = Modifier.padding(top = 12.dp)) {
-                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
-                            Spacer(modifier = Modifier.height(10.dp))
-
-                            Text(
-                                text = "Compatibility Status",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Text(
-                                text = vulkan?.vulkanModStatus ?: "Not Supported",
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = FontWeight.Bold,
-                                color = if (vulkan?.isVulkanModSupported == true) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
-                            )
-
-                            Spacer(modifier = Modifier.height(10.dp))
-
-                            InfoRowItem("Vulkan API Version", vulkan?.apiVersionString ?: "N/A")
-                            InfoRowItem(
-                                "Hardware Acceleration",
-                                when (vulkan?.hardwareLevel) {
-                                    1 -> "Level 1 (Full Desktop Class)"
-                                    0 -> "Level 0 (Basic Mobile)"
-                                    else -> "None"
-                                }
-                            )
-                            InfoRowItem("Compute Shaders", if ((vulkan?.hardwareComputeLevel ?: -1) >= 0) "Supported (Level ${vulkan?.hardwareComputeLevel})" else "Not Reported")
-                            InfoRowItem("ABI Architecture", if (vulkan?.is64BitAbi == true) "64-Bit (arm64-v8a)" else "32-Bit")
-
-                            Spacer(modifier = Modifier.height(10.dp))
-                            Text(
-                                text = "VulkanMod Gaming Checklist (PojavLauncher / Minecraft):",
-                                style = MaterialTheme.typography.labelMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            Spacer(modifier = Modifier.height(6.dp))
-
-                            vulkan?.compatibilityDetails?.forEach { detail ->
-                                Text(
-                                    text = detail,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    modifier = Modifier.padding(vertical = 2.dp)
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        // 4. Benchmark Hero Section
+        // 3. Benchmark Hero Section
         item {
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(20.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.4f)
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.4f),
+                    contentColor = MaterialTheme.colorScheme.onSurface
                 )
             ) {
                 Column(modifier = Modifier.padding(18.dp)) {
@@ -383,7 +285,8 @@ fun SettingsScreen(
                                 Text(
                                     text = "Hardware Benchmark",
                                     style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
                                 )
                                 Text(
                                     text = "Compute, RAM & Storage I/O test",
@@ -396,7 +299,8 @@ fun SettingsScreen(
                         if (benchmarkResult != null) {
                             Surface(
                                 shape = RoundedCornerShape(12.dp),
-                                color = MaterialTheme.colorScheme.secondary
+                                color = MaterialTheme.colorScheme.secondary,
+                                contentColor = MaterialTheme.colorScheme.onSecondary
                             ) {
                                 Text(
                                     text = "${benchmarkResult!!.totalBenchmarkScore} pts",
@@ -417,21 +321,78 @@ fun SettingsScreen(
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary
                         )
-                        Spacer(modifier = Modifier.height(6.dp))
+                        Spacer(modifier = Modifier.height(10.dp))
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Text("Single-Core: ${benchmarkResult!!.cpuSingleCoreScore}", style = MaterialTheme.typography.bodySmall)
-                            Text("Multi-Core: ${benchmarkResult!!.cpuMultiCoreScore}", style = MaterialTheme.typography.bodySmall)
-                            Text("RAM: ${benchmarkResult!!.ramSpeedMbPerSec} MB/s", style = MaterialTheme.typography.bodySmall)
+                            Surface(
+                                shape = RoundedCornerShape(10.dp),
+                                color = MaterialTheme.colorScheme.surface,
+                                contentColor = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Column(modifier = Modifier.padding(8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text("Single-Core", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text("${benchmarkResult!!.cpuSingleCoreScore}", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                                }
+                            }
+                            Surface(
+                                shape = RoundedCornerShape(10.dp),
+                                color = MaterialTheme.colorScheme.surface,
+                                contentColor = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Column(modifier = Modifier.padding(8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text("Multi-Core", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text("${benchmarkResult!!.cpuMultiCoreScore}", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                                }
+                            }
+                            Surface(
+                                shape = RoundedCornerShape(10.dp),
+                                color = MaterialTheme.colorScheme.surface,
+                                contentColor = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Column(modifier = Modifier.padding(8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text("RAM Speed", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text("${benchmarkResult!!.ramSpeedMbPerSec} M/s", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                                }
+                            }
                         }
+                        Spacer(modifier = Modifier.height(8.dp))
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Text("Storage Read: ${benchmarkResult!!.storageReadMbPerSec} MB/s", style = MaterialTheme.typography.bodySmall)
-                            Text("Storage Write: ${benchmarkResult!!.storageWriteMbPerSec} MB/s", style = MaterialTheme.typography.bodySmall)
+                            Surface(
+                                shape = RoundedCornerShape(10.dp),
+                                color = MaterialTheme.colorScheme.surface,
+                                contentColor = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(8.dp).fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text("Storage Read", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text("${benchmarkResult!!.storageReadMbPerSec} MB/s", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                                }
+                            }
+                            Surface(
+                                shape = RoundedCornerShape(10.dp),
+                                color = MaterialTheme.colorScheme.surface,
+                                contentColor = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(8.dp).fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text("Storage Write", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text("${benchmarkResult!!.storageWriteMbPerSec} MB/s", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                                }
+                            }
                         }
                     }
 
@@ -505,7 +466,7 @@ fun SettingsScreen(
                             )
                             Spacer(modifier = Modifier.width(12.dp))
                             Column {
-                                Text("Wi-Fi Analyzer", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                                Text("Wi-Fi Analyzer", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
                                 Text("${net?.wifiSsid ?: "Connected"} • ${net?.wifiLinkSpeedMbps ?: 150} Mbps", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
@@ -539,7 +500,8 @@ fun SettingsScreen(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(18.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    contentColor = MaterialTheme.colorScheme.onSurface
                 )
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
@@ -558,7 +520,7 @@ fun SettingsScreen(
                             )
                             Spacer(modifier = Modifier.width(12.dp))
                             Column {
-                                Text("Sensor Explorer", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                                Text("Sensor Explorer", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
                                 Text("${sensors.size} Hardware Sensors Detected", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
@@ -580,13 +542,18 @@ fun SettingsScreen(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Column(modifier = Modifier.weight(1f)) {
-                                        Text(sensor.name, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                                        Text(sensor.name, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
                                         Text(sensor.vendor, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     }
-                                    Surface(shape = RoundedCornerShape(8.dp), color = MaterialTheme.colorScheme.surface) {
+                                    Surface(
+                                        shape = RoundedCornerShape(8.dp),
+                                        color = MaterialTheme.colorScheme.surface,
+                                        contentColor = MaterialTheme.colorScheme.onSurface
+                                    ) {
                                         Text(
                                             text = "${sensor.powerMa} mA",
                                             style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurface,
                                             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                                         )
                                     }
@@ -604,7 +571,8 @@ fun SettingsScreen(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(18.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    contentColor = MaterialTheme.colorScheme.onSurface
                 )
             ) {
                 Row(
@@ -615,7 +583,7 @@ fun SettingsScreen(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("Export Hardware Report", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                        Text("Export Hardware Report", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
                         Text("Share complete specifications as Markdown / TXT report", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     Button(
@@ -636,14 +604,15 @@ fun SettingsScreen(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(18.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    contentColor = MaterialTheme.colorScheme.onSurface
                 )
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.Widgets, contentDescription = "Widgets", tint = MaterialTheme.colorScheme.secondary)
                         Spacer(modifier = Modifier.width(10.dp))
-                        Text("Material You Home Widgets", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                        Text("Material You Home Widgets", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
                     }
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
@@ -661,7 +630,8 @@ fun SettingsScreen(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(20.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    contentColor = MaterialTheme.colorScheme.onSurface
                 )
             ) {
                 Column(modifier = Modifier.padding(18.dp)) {
@@ -676,7 +646,8 @@ fun SettingsScreen(
                                 Text(
                                     text = "Privacy-First Architecture",
                                     style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
                                 )
                                 Text(
                                     text = "Zero tracking • 100% on-device operation",
@@ -718,7 +689,7 @@ fun SettingsScreen(
             title = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("🛡️", fontSize = 24.sp, modifier = Modifier.padding(end = 8.dp))
-                    Text("Privacy Policy", fontWeight = FontWeight.Bold)
+                    Text("Privacy Policy", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
                 }
             },
             text = {
@@ -739,7 +710,8 @@ fun SettingsScreen(
                         Text(
                             text = "1. Zero Personal Data Collection",
                             style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
                             text = "Foxy Device Info does not collect, harvest, store, or transmit any personally identifiable information (PII), device serial numbers, location logs, contacts, photos, or browsing data.",
@@ -751,7 +723,8 @@ fun SettingsScreen(
                         Text(
                             text = "2. Diagnostic Permissions Usage",
                             style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
                             text = "• Camera & Flashlight: Accessed strictly when you initiate the Flashlight / Camera Specs diagnostic test. No photos or video frames are ever captured or saved.\n• Microphone (Audio Record): Temporarily sampled in volatile RAM solely during the live Microphone decibel meter test. Audio data is never recorded to disk or transmitted.\n• Bluetooth & Wi-Fi: Queried locally to report connection speed, frequency, and radio availability. No location tracking is performed.\n• Installed Applications: Scanned locally by PackageManager solely for the App & Permission Analyzer tool.",
@@ -763,7 +736,8 @@ fun SettingsScreen(
                         Text(
                             text = "3. 100% Offline & Local Execution",
                             style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
                             text = "All CPU, GPU, Vulkan, RAM, Storage, and battery telemetry is calculated directly on your processor. The application operates without requiring internet access or server connectivity.",
@@ -775,7 +749,8 @@ fun SettingsScreen(
                         Text(
                             text = "4. Report Export Control",
                             style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
                             text = "Generated device specification reports remain on your device and are only shared if you explicitly initiate an Android system share action.",
@@ -787,7 +762,8 @@ fun SettingsScreen(
                         Text(
                             text = "5. Third-Party Services & Ads",
                             style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
                             text = "This application contains zero advertising networks, zero tracking SDKs, and zero telemetry analytics. Developed independently by FoxyPlayzZ.",

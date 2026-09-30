@@ -24,7 +24,17 @@ data class CpuSpec(
     val instructionSets: String,
     val governor: String,
     val minFreqMhz: Int,
-    val maxFreqMhz: Int
+    val maxFreqMhz: Int,
+    val clustersDescription: String = "",
+    val coreMicroarchitecture: String = "",
+    val features: List<String> = emptyList(),
+    val cpuImplementer: String = "",
+    val cpuPart: String = "",
+    val bogoMips: String = "",
+    val hardwareBoard: String = "",
+    val is64Bit: Boolean = true,
+    val cacheInfo: String = "",
+    val processNodeEstimated: String = ""
 )
 
 data class GpuDisplaySpec(

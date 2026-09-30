@@ -22,6 +22,8 @@ import androidx.compose.ui.unit.sp
 import com.example.ui.theme.FoxyOrangeDark
 import com.example.ui.theme.FoxyOrangeLight
 
+import androidx.compose.ui.text.style.TextOverflow
+
 @Composable
 fun FoxyHeaderBanner(
     deviceName: String,
@@ -32,18 +34,20 @@ fun FoxyHeaderBanner(
     modifier: Modifier = Modifier
 ) {
     val foxyMood = when {
-        cpuUsage > 80f -> "Phew, working hard! 🦊🔥"
-        tempC > 42f -> "A bit warm here! 🦊☀️"
-        batteryPct < 20 -> "Feed me power soon! 🦊⚡"
-        else -> "All systems running smooth! 🦊✨"
+        cpuUsage > 80f -> "Working hard 🔥"
+        tempC > 42f -> "Warm ☀️"
+        batteryPct < 20 -> "Low battery ⚡"
+        else -> "Smooth ✨"
     }
 
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f)
-        )
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f),
+            contentColor = MaterialTheme.colorScheme.onSurface
+        ),
+        border = liquidGlassBorder(strokeWidth = 1.dp, glowColor = MaterialTheme.colorScheme.primary)
     ) {
         Box(
             modifier = Modifier
@@ -64,7 +68,11 @@ fun FoxyHeaderBanner(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Column(modifier = Modifier.weight(1f)) {
+                    Column(
+                        modifier = Modifier
+                            .weight(1f, fill = false)
+                            .padding(end = 8.dp)
+                    ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
                                 text = "🦊",
@@ -75,13 +83,17 @@ fun FoxyHeaderBanner(
                                 text = deviceName,
                                 style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface
+                                color = MaterialTheme.colorScheme.onSurface,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
                         }
                         Text(
                             text = deviceModel,
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
 
@@ -89,6 +101,7 @@ fun FoxyHeaderBanner(
                     Surface(
                         shape = RoundedCornerShape(16.dp),
                         color = MaterialTheme.colorScheme.primaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                         tonalElevation = 2.dp
                     ) {
                         Text(
@@ -96,6 +109,8 @@ fun FoxyHeaderBanner(
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
                         )
                     }
@@ -142,8 +157,9 @@ fun StatusPill(
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(16.dp),
-        color = color.copy(alpha = 0.16f),
-        border = androidx.compose.foundation.BorderStroke(1.dp, color.copy(alpha = 0.28f))
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.75f),
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        border = androidx.compose.foundation.BorderStroke(1.dp, color.copy(alpha = 0.35f))
     ) {
         Column(
             modifier = Modifier.padding(vertical = 8.dp, horizontal = 10.dp),
@@ -152,14 +168,18 @@ fun StatusPill(
             Text(
                 text = label,
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
             Spacer(modifier = Modifier.height(2.dp))
             Text(
                 text = value,
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold,
-                color = color
+                color = color,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         }
     }

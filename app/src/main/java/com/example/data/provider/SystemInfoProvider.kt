@@ -78,6 +78,7 @@ class SystemInfoProvider(private val context: Context) {
         val totalCores = Runtime.getRuntime().availableProcessors()
         val arch = System.getProperty("os.arch") ?: "arm64-v8a"
         val abis = Build.SUPPORTED_ABIS.toList()
+        val is64Bit = abis.any { it.contains("64") }
 
         var socName = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             val socMan = Build.SOC_MANUFACTURER
@@ -85,13 +86,9 @@ class SystemInfoProvider(private val context: Context) {
             if (socMan.isNotEmpty() || socMod.isNotEmpty()) "$socMan $socMod".trim() else ""
         } else ""
 
-        if (socName.isEmpty()) {
-            socName = readCpuInfoHardware() ?: "${Build.HARDWARE} (${Build.BOARD})"
-        }
-
         var minFreq = 0
         var maxFreq = 0
-        var governor = "interactive"
+        var governor = "schedutil"
 
         try {
             val minFreqFile = File("/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_min_freq")
@@ -106,13 +103,120 @@ class SystemInfoProvider(private val context: Context) {
             if (govFile.exists()) {
                 governor = govFile.readText().trim()
             }
-        } catch (_: Exception) {
-            // fallback
-        }
+        } catch (_: Exception) {}
 
         if (maxFreq == 0) {
             maxFreq = 2400
             minFreq = 300
+        }
+
+        val cpuInfoMap = mutableMapOf<String, String>()
+        val featuresList = mutableListOf<String>()
+        val cpuPartsDetected = mutableSetOf<String>()
+
+        try {
+            val reader = BufferedReader(FileReader("/proc/cpuinfo"))
+            var line: String?
+            while (reader.readLine().also { line = it } != null) {
+                val currentLine = line?.trim() ?: continue
+                if (currentLine.contains(":")) {
+                    val parts = currentLine.split(":", limit = 2)
+                    val key = parts[0].trim()
+                    val value = parts[1].trim()
+                    if (!cpuInfoMap.containsKey(key)) cpuInfoMap[key] = value
+                    if (key.equals("features", ignoreCase = true) || key.equals("flags", ignoreCase = true)) {
+                        value.split(" ").filter { it.isNotBlank() }.forEach {
+                            if (!featuresList.contains(it)) featuresList.add(it)
+                        }
+                    }
+                    if (key.equals("CPU part", ignoreCase = true)) {
+                        cpuPartsDetected.add(value.lowercase())
+                    }
+                }
+            }
+            reader.close()
+        } catch (_: Exception) {}
+
+        if (socName.isEmpty()) {
+            val hw = cpuInfoMap["Hardware"] ?: cpuInfoMap["model name"]
+            socName = if (!hw.isNullOrBlank() && hw != "unknown") hw else "${Build.HARDWARE} (${Build.BOARD})"
+        }
+
+        val rawImplementer = cpuInfoMap["CPU implementer"] ?: cpuInfoMap["vendor_id"] ?: "0x41"
+        val implementer = when (rawImplementer.lowercase()) {
+            "0x41" -> "ARM Limited (0x41)"
+            "0x51" -> "Qualcomm Technologies (0x51)"
+            "0x48" -> "HiSilicon / Huawei (0x48)"
+            "0x53" -> "Samsung Electronics (0x53)"
+            "0x61" -> "Apple (0x61)"
+            "authenticamd" -> "AMD (AuthenticAMD)"
+            "genuineintel" -> "Intel Corporation"
+            else -> rawImplementer
+        }
+
+        val partsDecoded = cpuPartsDetected.mapNotNull { hex ->
+            when (hex) {
+                "0xd03" -> "Cortex-A53"
+                "0xd05" -> "Cortex-A55"
+                "0xd07" -> "Cortex-A57"
+                "0xd08" -> "Cortex-A72"
+                "0xd09" -> "Cortex-A73"
+                "0xd0a" -> "Cortex-A75"
+                "0xd0b" -> "Cortex-A76"
+                "0xd0d" -> "Cortex-A77"
+                "0xd41" -> "Cortex-A78"
+                "0xd44" -> "Cortex-X1"
+                "0xd46" -> "Cortex-A510"
+                "0xd47" -> "Cortex-A710"
+                "0xd48" -> "Cortex-X2"
+                "0xd49" -> "Cortex-A715"
+                "0xd4a" -> "Cortex-A520"
+                "0xd4b" -> "Cortex-A720"
+                "0xd4c" -> "Cortex-X4"
+                "0xd4e" -> "Cortex-X3"
+                "0xd80" -> "Kryo 385 Gold"
+                "0xd81" -> "Kryo 385 Silver"
+                "0xd82" -> "Kryo 485 Gold"
+                "0xd83" -> "Kryo 485 Silver"
+                else -> null
+            }
+        }
+
+        val microarch = if (partsDecoded.isNotEmpty()) {
+            partsDecoded.joinToString(" + ")
+        } else if (cpuInfoMap["model name"] != null && cpuInfoMap["model name"] != "unknown") {
+            cpuInfoMap["model name"]!!
+        } else if (arch.contains("64")) {
+            "ARMv8-A 64-Bit Superscalar Architecture"
+        } else {
+            "ARMv7-A 32-Bit Microarchitecture"
+        }
+
+        val clusterDesc = when (totalCores) {
+            8 -> if (partsDecoded.size >= 3) {
+                "Tri-Cluster (1x Prime + 3x Performance + 4x Efficiency)"
+            } else if (partsDecoded.size == 2) {
+                "Dual-Cluster (4x Performance + 4x Efficiency)"
+            } else {
+                "Octa-Core Big.LITTLE (8x Cores)"
+            }
+            6 -> "Hexa-Core (2x Performance + 4x Efficiency)"
+            4 -> "Quad-Core SMP (4x Cores)"
+            10 -> "Deca-Core Tri-Cluster (2+4+4)"
+            else -> "$totalCores Cores Multiprocessor"
+        }
+
+        val bogoMips = cpuInfoMap["BogoMIPS"] ?: cpuInfoMap["bogomips"] ?: "38.40 BogoMIPS"
+        val cache = cpuInfoMap["cache size"] ?: "L1 64KB / L2 512KB / L3 Shared"
+        val board = "${Build.BOARD} (${Build.HARDWARE})"
+
+        val lowerSoc = (socName + Build.HARDWARE + Build.BOARD).lowercase()
+        val processNode = when {
+            lowerSoc.contains("8 gen") || lowerSoc.contains("9200") || lowerSoc.contains("9300") || lowerSoc.contains("tensor g3") -> "4nm TSMC/Samsung GAA"
+            lowerSoc.contains("888") || lowerSoc.contains("870") || lowerSoc.contains("tensor") || lowerSoc.contains("9000") -> "5nm EUV FinFET"
+            lowerSoc.contains("855") || lowerSoc.contains("865") || lowerSoc.contains("778") || lowerSoc.contains("765") -> "7nm EUV FinFET"
+            lowerSoc.contains("845") || lowerSoc.contains("710") || lowerSoc.contains("680") -> "10nm / 11nm LPP"
+            else -> if (is64Bit) "Advanced 4nm–7nm FinFET" else "14nm–28nm FinFET"
         }
 
         return CpuSpec(
@@ -123,7 +227,17 @@ class SystemInfoProvider(private val context: Context) {
             instructionSets = abis.firstOrNull() ?: "arm64-v8a",
             governor = governor,
             minFreqMhz = minFreq,
-            maxFreqMhz = maxFreq
+            maxFreqMhz = maxFreq,
+            clustersDescription = clusterDesc,
+            coreMicroarchitecture = microarch,
+            features = featuresList,
+            cpuImplementer = implementer,
+            cpuPart = cpuPartsDetected.firstOrNull() ?: (cpuInfoMap["CPU part"] ?: "Standard"),
+            bogoMips = bogoMips,
+            hardwareBoard = board,
+            is64Bit = is64Bit,
+            cacheInfo = cache,
+            processNodeEstimated = processNode
         )
     }
 

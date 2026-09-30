@@ -70,7 +70,8 @@ fun MonitorScreen(
                             Text(
                                 text = "Floating Performance HUD",
                                 style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                         }
                         Text(
@@ -94,6 +95,7 @@ fun MonitorScreen(
                 Surface(
                     shape = RoundedCornerShape(16.dp),
                     color = MaterialTheme.colorScheme.surfaceVariant,
+                    contentColor = MaterialTheme.colorScheme.onSurface,
                     tonalElevation = 6.dp,
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -105,9 +107,9 @@ fun MonitorScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text("🦊 Foxy HUD", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                        Text("CPU: ${metrics.cpuUsagePercent.toInt()}%", fontWeight = FontWeight.SemiBold)
-                        Text("RAM: ${metrics.ramUsedPercent.toInt()}%", fontWeight = FontWeight.SemiBold)
-                        Text("TEMP: ${metrics.batteryTempCelsius.toInt()}°C", fontWeight = FontWeight.SemiBold)
+                        Text("CPU: ${metrics.cpuUsagePercent.toInt()}%", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                        Text("RAM: ${metrics.ramUsedPercent.toInt()}%", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                        Text("TEMP: ${metrics.batteryTempCelsius.toInt()}°C", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
                     }
                 }
             }
@@ -119,7 +121,8 @@ fun MonitorScreen(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(20.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
+                    contentColor = MaterialTheme.colorScheme.onSurface
                 )
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
@@ -138,7 +141,8 @@ fun MonitorScreen(
                             Text(
                                 text = "CPU Utilization Timeline",
                                 style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                         }
                         Text(
@@ -177,6 +181,7 @@ fun MonitorScreen(
                             Surface(
                                 shape = RoundedCornerShape(8.dp),
                                 color = MaterialTheme.colorScheme.surface,
+                                contentColor = MaterialTheme.colorScheme.onSurface,
                                 modifier = Modifier.weight(1f)
                             ) {
                                 Column(
@@ -208,7 +213,8 @@ fun MonitorScreen(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(20.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
+                    contentColor = MaterialTheme.colorScheme.onSurface
                 )
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
@@ -227,7 +233,8 @@ fun MonitorScreen(
                             Text(
                                 text = "RAM Usage Timeline",
                                 style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                         }
                         Text(
@@ -274,7 +281,8 @@ fun MonitorScreen(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(20.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
+                    contentColor = MaterialTheme.colorScheme.onSurface
                 )
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
@@ -293,7 +301,8 @@ fun MonitorScreen(
                             Text(
                                 text = "Real-Time Network Speed",
                                 style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                         }
                     }
@@ -313,7 +322,11 @@ fun MonitorScreen(
                                     modifier = Modifier.size(16.dp)
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
-                                Text("Download", style = MaterialTheme.typography.labelSmall)
+                                Text(
+                                    text = "Download",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             }
                             Text(
                                 text = if (downKb > 1024) String.format(Locale.US, "%.1f MB/s", downKb / 1024f) else String.format(Locale.US, "%.0f KB/s", downKb),
@@ -332,7 +345,11 @@ fun MonitorScreen(
                                     modifier = Modifier.size(16.dp)
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
-                                Text("Upload", style = MaterialTheme.typography.labelSmall)
+                                Text(
+                                    text = "Upload",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             }
                             Text(
                                 text = if (upKb > 1024) String.format(Locale.US, "%.1f MB/s", upKb / 1024f) else String.format(Locale.US, "%.0f KB/s", upKb),
@@ -360,7 +377,8 @@ fun MonitorScreen(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(20.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
+                    contentColor = MaterialTheme.colorScheme.onSurface
                 )
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
@@ -377,7 +395,8 @@ fun MonitorScreen(
                         Text(
                             text = "Battery Power & Thermals",
                             style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     }
 
@@ -413,7 +432,8 @@ fun MonitorScreen(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(20.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
+                    contentColor = MaterialTheme.colorScheme.onSurface
                 )
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
@@ -430,7 +450,8 @@ fun MonitorScreen(
                         Text(
                             text = "Hardware Thermal Sensors",
                             style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     }
 
@@ -447,11 +468,12 @@ fun MonitorScreen(
                             Text(
                                 text = zone.name,
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                             Surface(
                                 shape = RoundedCornerShape(8.dp),
-                                color = if (zone.tempCelsius > 45) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.surface
+                                color = if (zone.tempCelsius > 45) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.surface,
+                                contentColor = if (zone.tempCelsius > 45) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onSurface
                             ) {
                                 Text(
                                     text = String.format(Locale.US, "%.1f°C", zone.tempCelsius),
@@ -478,7 +500,8 @@ private fun TelemetryCard(
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.surface
+        color = MaterialTheme.colorScheme.surface,
+        contentColor = MaterialTheme.colorScheme.onSurface
     ) {
         Column(
             modifier = Modifier.padding(10.dp),

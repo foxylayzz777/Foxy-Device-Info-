@@ -49,6 +49,18 @@ val AmoledBgDark = Color(0xFF000000)
 val AmoledSurfaceDark = Color(0xFF0F0F0F)
 val AmoledCardDark = Color(0xFF1A1A1A)
 
+// Liquid Glass Palette (Translucent Sapphire, Opal, Frosted Azure & Cyan Glow)
+val LiquidGlassCyan = Color(0xFF00E5FF)
+val LiquidGlassAzure = Color(0xFF00B0FF)
+val LiquidGlassViolet = Color(0xFFB388FF)
+val LiquidGlassTeal = Color(0xFF18FFFF)
+val LiquidGlassBgDark = Color(0xFF050B18)
+val LiquidGlassSurfaceDark = Color(0xFF0B172E)
+val LiquidGlassCardDark = Color(0xFF102142)
+val LiquidGlassBgLight = Color(0xFFEBF3FC)
+val LiquidGlassSurfaceLight = Color(0xFFD6E6F8)
+val LiquidGlassCardLight = Color(0xFFFFFFFF)
+
 // Metric status colors
 val StatusGreen = Color(0xFF2E7D32)
 val StatusGreenDark = Color(0xFF81C784)
