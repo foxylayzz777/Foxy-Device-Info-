@@ -1,0 +1,6 @@
+{
+  "name": "Foxy Device Info",
+  "description": "Cute & powerful all-in-one device information, real-time hardware monitor, performance benchmark, and interactive diagnostics.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
