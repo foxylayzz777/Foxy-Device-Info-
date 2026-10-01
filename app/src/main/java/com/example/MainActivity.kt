@@ -54,6 +54,9 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         handleIntentTab(intent)
+        try {
+            com.example.widget.FoxyAppWidgetProvider.updateAllWidgets(applicationContext)
+        } catch (_: Throwable) {}
         setContent {
             val viewModel: FoxyViewModel = viewModel()
             val themeStyle by viewModel.themeStyle.collectAsState()
@@ -70,6 +73,13 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         handleIntentTab(intent)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        try {
+            com.example.widget.FoxyAppWidgetProvider.updateAllWidgets(applicationContext)
+        } catch (_: Throwable) {}
     }
 
     private fun handleIntentTab(intent: Intent?) {

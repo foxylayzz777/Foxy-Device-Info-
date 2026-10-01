@@ -1,362 +1,387 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widget_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:padding="14dp"
-    android:background="@drawable/widget_background">
+    android:background="@drawable/widget_bg_liquid_glass">
 
-    <!-- 1. Header: Mascot, Device/SoC Title, OS Badge, Refresh Button -->
-    <LinearLayout
-        android:id="@+id/widget_header"
+    <!-- Reliable Background Image view controllable via setImageViewResource -->
+    <ImageView
+        android:id="@+id/widget_bg_image"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_vertical">
+        android:layout_height="match_parent"
+        android:scaleType="fitXY"
+        android:src="@drawable/widget_bg_liquid_glass" />
 
-        <TextView
-            android:id="@+id/widget_mascot"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="🦊"
-            android:textSize="18sp" />
+    <LinearLayout
+        android:id="@+id/widget_container"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:padding="12dp">
 
+        <!-- 1. Header: Mascot, Device/SoC Title, OS Badge, Refresh Button -->
         <LinearLayout
-            android:id="@+id/widget_title_layout"
-            android:layout_width="0dp"
+            android:id="@+id/widget_header"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:layout_marginStart="8dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:id="@+id/widget_mascot"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="🦊"
+                android:textSize="18sp" />
+
+            <LinearLayout
+                android:id="@+id/widget_title_layout"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/widget_title"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Foxy Hardware"
+                    android:textColor="#FFFFFF"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:maxLines="1"
+                    android:ellipsize="end" />
+
+                <TextView
+                    android:id="@+id/widget_subtitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Android • 64-Bit"
+                    android:textColor="#00E5FF"
+                    android:textSize="10sp"
+                    android:maxLines="1"
+                    android:ellipsize="end" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/widget_battery_badge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="85% ⚡"
+                android:textColor="#FFD54F"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:paddingLeft="6dp"
+                android:paddingRight="6dp"
+                android:paddingTop="2dp"
+                android:paddingBottom="2dp" />
+
+            <TextView
+                android:id="@+id/widget_btn_refresh"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="🔄"
+                android:textSize="14sp"
+                android:padding="4dp"
+                android:layout_marginStart="4dp" />
+        </LinearLayout>
+
+        <!-- Divider using RemoteViews-safe ImageView with drawable -->
+        <ImageView
+            android:id="@+id/widget_divider"
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginTop="6dp"
+            android:layout_marginBottom="6dp"
+            android:src="@drawable/widget_divider"
+            android:scaleType="fitXY" />
+
+        <!-- 2. CPU & Processor Metric Row -->
+        <LinearLayout
+            android:id="@+id/widget_row_cpu"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="5dp"
             android:orientation="vertical">
 
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <TextView
+                    android:id="@+id/widget_cpu_label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="⚡ CPU Load"
+                    android:textColor="#B0BEC5"
+                    android:textSize="11sp" />
+
+                <TextView
+                    android:id="@+id/widget_cpu_val"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="end"
+                    android:text="32% • 8 Cores"
+                    android:textColor="#00E5FF"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <ProgressBar
+                android:id="@+id/widget_cpu_progress"
+                style="@android:style/Widget.ProgressBar.Horizontal"
+                android:layout_width="match_parent"
+                android:layout_height="4dp"
+                android:layout_marginTop="2dp"
+                android:progress="32"
+                android:max="100" />
+        </LinearLayout>
+
+        <!-- 3. RAM Memory Metric Row -->
+        <LinearLayout
+            android:id="@+id/widget_row_ram"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="5dp"
+            android:orientation="vertical">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <TextView
+                    android:id="@+id/widget_ram_label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="🧠 RAM Memory"
+                    android:textColor="#B0BEC5"
+                    android:textSize="11sp" />
+
+                <TextView
+                    android:id="@+id/widget_ram_val"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="end"
+                    android:text="4.2 / 8.0 GB (52%)"
+                    android:textColor="#B388FF"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <ProgressBar
+                android:id="@+id/widget_ram_progress"
+                style="@android:style/Widget.ProgressBar.Horizontal"
+                android:layout_width="match_parent"
+                android:layout_height="4dp"
+                android:layout_marginTop="2dp"
+                android:progress="52"
+                android:max="100" />
+        </LinearLayout>
+
+        <!-- 4. Internal Storage Metric Row -->
+        <LinearLayout
+            android:id="@+id/widget_row_storage"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="5dp"
+            android:orientation="vertical">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <TextView
+                    android:id="@+id/widget_storage_label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="💾 Storage (ROM)"
+                    android:textColor="#B0BEC5"
+                    android:textSize="11sp" />
+
+                <TextView
+                    android:id="@+id/widget_storage_val"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="end"
+                    android:text="64 / 256 GB (25%)"
+                    android:textColor="#80CBC4"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <ProgressBar
+                android:id="@+id/widget_storage_progress"
+                style="@android:style/Widget.ProgressBar.Horizontal"
+                android:layout_width="match_parent"
+                android:layout_height="4dp"
+                android:layout_marginTop="2dp"
+                android:progress="25"
+                android:max="100" />
+        </LinearLayout>
+
+        <!-- 5. Battery & Thermal Row -->
+        <LinearLayout
+            android:id="@+id/widget_row_battery"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="5dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
             <TextView
-                android:id="@+id/widget_title"
+                android:id="@+id/widget_temp_val"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="🌡️ Battery: 32°C • Good • 4120mV"
+                android:textColor="#B0BEC5"
+                android:textSize="11sp" />
+
+            <TextView
+                android:id="@+id/widget_uptime_val"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Foxy Hardware"
+                android:text="Up: 24h 12m"
+                android:textColor="#90CAF9"
+                android:textSize="10sp" />
+        </LinearLayout>
+
+        <!-- 6. Network Connectivity Row -->
+        <LinearLayout
+            android:id="@+id/widget_row_network"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="5dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:id="@+id/widget_network_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="📶 Network"
+                android:textColor="#B0BEC5"
+                android:textSize="11sp" />
+
+            <TextView
+                android:id="@+id/widget_network_val"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="end"
+                android:text="Wi-Fi Connected • 5 GHz"
+                android:textColor="#4DD0E1"
+                android:textSize="11sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <!-- 7. Display & Refresh Rate Row -->
+        <LinearLayout
+            android:id="@+id/widget_row_display"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="6dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:id="@+id/widget_display_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="🖥️ Display"
+                android:textColor="#B0BEC5"
+                android:textSize="11sp" />
+
+            <TextView
+                android:id="@+id/widget_display_val"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="end"
+                android:text="120 Hz • 1080×2400"
+                android:textColor="#FFD54F"
+                android:textSize="11sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <!-- 8. Quick Action Navigation Shortcuts Row -->
+        <LinearLayout
+            android:id="@+id/widget_row_actions"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:id="@+id/widget_btn_monitor"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginEnd="4dp"
+                android:background="@drawable/widget_btn_pill"
+                android:gravity="center"
+                android:paddingTop="5dp"
+                android:paddingBottom="5dp"
+                android:text="🚀 Monitor"
                 android:textColor="#FFFFFF"
-                android:textSize="13sp"
-                android:textStyle="bold"
-                android:singleLine="true" />
-
-            <TextView
-                android:id="@+id/widget_subtitle"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Android 14 • 64-Bit"
-                android:textColor="#00E5FF"
                 android:textSize="10sp"
-                android:singleLine="true" />
-        </LinearLayout>
-
-        <TextView
-            android:id="@+id/widget_battery_badge"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="85% ⚡"
-            android:textColor="#FFD54F"
-            android:textSize="12sp"
-            android:textStyle="bold"
-            android:paddingHorizontal="6dp"
-            android:paddingVertical="2dp" />
-
-        <TextView
-            android:id="@+id/widget_btn_refresh"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="🔄"
-            android:textSize="14sp"
-            android:padding="4dp"
-            android:layout_marginStart="4dp" />
-    </LinearLayout>
-
-    <View
-        android:id="@+id/widget_divider"
-        android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:layout_marginVertical="8dp"
-        android:background="#25FFFFFF" />
-
-    <!-- 2. CPU & Processor Metric Row -->
-    <LinearLayout
-        android:id="@+id/widget_row_cpu"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="6dp"
-        android:orientation="vertical">
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical">
+                android:textStyle="bold" />
 
             <TextView
-                android:id="@+id/widget_cpu_label"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="⚡ CPU Load"
-                android:textColor="#B0BEC5"
-                android:textSize="11sp" />
-
-            <TextView
-                android:id="@+id/widget_cpu_val"
+                android:id="@+id/widget_btn_diagnostics"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:gravity="end"
-                android:text="32% • 2.4 GHz"
-                android:textColor="#00E5FF"
-                android:textSize="11sp"
+                android:layout_marginEnd="4dp"
+                android:background="@drawable/widget_btn_pill"
+                android:gravity="center"
+                android:paddingTop="5dp"
+                android:paddingBottom="5dp"
+                android:text="🛠️ Tests"
+                android:textColor="#FFFFFF"
+                android:textSize="10sp"
                 android:textStyle="bold" />
-        </LinearLayout>
-
-        <ProgressBar
-            android:id="@+id/widget_cpu_progress"
-            style="?android:attr/progressBarStyleHorizontal"
-            android:layout_width="match_parent"
-            android:layout_height="4dp"
-            android:layout_marginTop="2dp"
-            android:progress="32"
-            android:max="100" />
-    </LinearLayout>
-
-    <!-- 3. RAM Memory Metric Row -->
-    <LinearLayout
-        android:id="@+id/widget_row_ram"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="6dp"
-        android:orientation="vertical">
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical">
 
             <TextView
-                android:id="@+id/widget_ram_label"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="🧠 RAM Memory"
-                android:textColor="#B0BEC5"
-                android:textSize="11sp" />
-
-            <TextView
-                android:id="@+id/widget_ram_val"
+                android:id="@+id/widget_btn_apps"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:gravity="end"
-                android:text="4.2 / 8.0 GB (52%)"
-                android:textColor="#B388FF"
-                android:textSize="11sp"
+                android:layout_marginEnd="4dp"
+                android:background="@drawable/widget_btn_pill"
+                android:gravity="center"
+                android:paddingTop="5dp"
+                android:paddingBottom="5dp"
+                android:text="📱 Apps"
+                android:textColor="#FFFFFF"
+                android:textSize="10sp"
                 android:textStyle="bold" />
-        </LinearLayout>
-
-        <ProgressBar
-            android:id="@+id/widget_ram_progress"
-            style="?android:attr/progressBarStyleHorizontal"
-            android:layout_width="match_parent"
-            android:layout_height="4dp"
-            android:layout_marginTop="2dp"
-            android:progress="52"
-            android:max="100" />
-    </LinearLayout>
-
-    <!-- 4. Internal Storage Metric Row -->
-    <LinearLayout
-        android:id="@+id/widget_row_storage"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="6dp"
-        android:orientation="vertical">
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical">
 
             <TextView
-                android:id="@+id/widget_storage_label"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="💾 Storage (ROM)"
-                android:textColor="#B0BEC5"
-                android:textSize="11sp" />
-
-            <TextView
-                android:id="@+id/widget_storage_val"
+                android:id="@+id/widget_btn_settings"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:gravity="end"
-                android:text="64 / 256 GB (25%)"
-                android:textColor="#80CBC4"
-                android:textSize="11sp"
+                android:background="@drawable/widget_btn_pill"
+                android:gravity="center"
+                android:paddingTop="5dp"
+                android:paddingBottom="5dp"
+                android:text="⚙️ Customize"
+                android:textColor="#FFFFFF"
+                android:textSize="10sp"
                 android:textStyle="bold" />
         </LinearLayout>
-
-        <ProgressBar
-            android:id="@+id/widget_storage_progress"
-            style="?android:attr/progressBarStyleHorizontal"
-            android:layout_width="match_parent"
-            android:layout_height="4dp"
-            android:layout_marginTop="2dp"
-            android:progress="25"
-            android:max="100" />
     </LinearLayout>
-
-    <!-- 5. Battery & Thermal Row -->
-    <LinearLayout
-        android:id="@+id/widget_row_battery"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="6dp"
-        android:orientation="horizontal"
-        android:gravity="center_vertical">
-
-        <TextView
-            android:id="@+id/widget_temp_val"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="🌡️ Battery: 32°C • Good • 4120mV"
-            android:textColor="#B0BEC5"
-            android:textSize="11sp" />
-
-        <TextView
-            android:id="@+id/widget_uptime_val"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Up: 24h 12m"
-            android:textColor="#90CAF9"
-            android:textSize="10sp" />
-    </LinearLayout>
-
-    <!-- 6. Network Connectivity Row -->
-    <LinearLayout
-        android:id="@+id/widget_row_network"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="6dp"
-        android:orientation="horizontal"
-        android:gravity="center_vertical">
-
-        <TextView
-            android:id="@+id/widget_network_label"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="📶 Network"
-            android:textColor="#B0BEC5"
-            android:textSize="11sp" />
-
-        <TextView
-            android:id="@+id/widget_network_val"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:gravity="end"
-            android:text="Wi-Fi Connected • 5 GHz"
-            android:textColor="#4DD0E1"
-            android:textSize="11sp"
-            android:textStyle="bold" />
-    </LinearLayout>
-
-    <!-- 7. Display & Refresh Rate Row -->
-    <LinearLayout
-        android:id="@+id/widget_row_display"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="6dp"
-        android:orientation="horizontal"
-        android:gravity="center_vertical">
-
-        <TextView
-            android:id="@+id/widget_display_label"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="🖥️ Display"
-            android:textColor="#B0BEC5"
-            android:textSize="11sp" />
-
-        <TextView
-            android:id="@+id/widget_display_val"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:gravity="end"
-            android:text="120 Hz • 1080×2400"
-            android:textColor="#FFD54F"
-            android:textSize="11sp"
-            android:textStyle="bold" />
-    </LinearLayout>
-
-    <!-- 8. Quick Action Navigation Shortcuts Row -->
-    <LinearLayout
-        android:id="@+id/widget_row_actions"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
-        android:orientation="horizontal"
-        android:gravity="center_vertical">
-
-        <TextView
-            android:id="@+id/widget_btn_monitor"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:layout_marginEnd="4dp"
-            android:background="@drawable/widget_btn_pill"
-            android:gravity="center"
-            android:paddingVertical="5dp"
-            android:text="🚀 Monitor"
-            android:textColor="#FFFFFF"
-            android:textSize="10sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:id="@+id/widget_btn_diagnostics"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:layout_marginEnd="4dp"
-            android:background="@drawable/widget_btn_pill"
-            android:gravity="center"
-            android:paddingVertical="5dp"
-            android:text="🛠️ Tests"
-            android:textColor="#FFFFFF"
-            android:textSize="10sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:id="@+id/widget_btn_apps"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:layout_marginEnd="4dp"
-            android:background="@drawable/widget_btn_pill"
-            android:gravity="center"
-            android:paddingVertical="5dp"
-            android:text="📱 Apps"
-            android:textColor="#FFFFFF"
-            android:textSize="10sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:id="@+id/widget_btn_settings"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:background="@drawable/widget_btn_pill"
-            android:gravity="center"
-            android:paddingVertical="5dp"
-            android:text="⚙️ Customize"
-            android:textColor="#FFFFFF"
-            android:textSize="10sp"
-            android:textStyle="bold" />
-    </LinearLayout>
-</LinearLayout>
+</FrameLayout>

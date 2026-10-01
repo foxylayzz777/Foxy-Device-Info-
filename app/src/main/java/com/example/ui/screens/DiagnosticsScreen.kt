@@ -87,7 +87,7 @@ fun DiagnosticsScreen(
 
     val displayedTests = remember(tests, selectedFilter) {
         when (selectedFilter) {
-            "Passed" -> tests.filter { it.status == TestStatus.PASSED }
+            "Pass", "Passed" -> tests.filter { it.status == TestStatus.PASSED }
             "Failed" -> tests.filter { it.status == TestStatus.FAILED }
             "Pending" -> tests.filter { it.status == TestStatus.NOT_RUN }
             else -> tests
@@ -98,71 +98,129 @@ fun DiagnosticsScreen(
         modifier = modifier
             .fillMaxSize()
             .padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
         contentPadding = PaddingValues(top = 16.dp, bottom = 32.dp)
     ) {
-        // 1. Hardware Health Overview Card
+        // 1. Modern Hardware Health Overview Bento Card
         item {
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(22.dp),
+                shape = RoundedCornerShape(24.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
                     contentColor = MaterialTheme.colorScheme.onSurface
                 ),
                 border = androidx.compose.foundation.BorderStroke(
                     1.dp,
-                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
+                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f)
                 )
             ) {
-                Column(modifier = Modifier.padding(18.dp)) {
+                Column(modifier = Modifier.padding(20.dp)) {
+                    // Header Bar with Pulsing Badge
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Column {
-                            Text(
-                                text = "Hardware Diagnostics",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(8.dp)
+                                    .clip(CircleShape)
+                                    .background(
+                                        if (failedCount > 0) Color(0xFFFF5252) else Color(0xFF00E676)
+                                    )
                             )
+                            Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "$passedCount passed • $failedCount failed • $pendingCount pending",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                text = "SYSTEM DIAGNOSTICS SUITE",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 1.2.sp,
+                                color = MaterialTheme.colorScheme.primary
                             )
                         }
 
                         Surface(
-                            shape = RoundedCornerShape(14.dp),
-                            color = if (failedCount > 0) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.primaryContainer,
-                            contentColor = if (failedCount > 0) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onPrimaryContainer
+                            shape = RoundedCornerShape(12.dp),
+                            color = if (failedCount > 0) MaterialTheme.colorScheme.errorContainer
+                            else if (passedCount == totalSupported && totalSupported > 0) Color(0xFF00E676).copy(alpha = 0.18f)
+                            else MaterialTheme.colorScheme.primaryContainer,
+                            contentColor = if (failedCount > 0) MaterialTheme.colorScheme.onErrorContainer
+                            else if (passedCount == totalSupported && totalSupported > 0) Color(0xFF00E676)
+                            else MaterialTheme.colorScheme.onPrimaryContainer
                         ) {
                             Text(
-                                text = "${(testProgress * 100).toInt()}% Health",
+                                text = if (failedCount > 0) "$failedCount Issues Found"
+                                else if (passedCount == totalSupported && totalSupported > 0) "100% Verified ✓"
+                                else "${(testProgress * 100).toInt()}% Health",
                                 style = MaterialTheme.typography.labelMedium,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                                fontWeight = FontWeight.ExtraBold,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
                             )
                         }
                     }
 
                     Spacer(modifier = Modifier.height(14.dp))
 
-                    LinearProgressIndicator(
-                        progress = { testProgress },
+                    // Title & Quick Counter Summary
+                    Text(
+                        text = "Hardware Diagnostic Overview",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "$passedCount passed • $failedCount failed • $pendingCount remaining",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    // Modern Multi-Segment Diagnostic Progress Bar
+                    Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(8.dp)
-                            .clip(RoundedCornerShape(4.dp)),
-                        color = MaterialTheme.colorScheme.primary,
-                        trackColor = MaterialTheme.colorScheme.surface
-                    )
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.6f))
+                    ) {
+                        val passWeight = if (totalSupported > 0) passedCount.toFloat() / totalSupported else 0f
+                        val failWeight = if (totalSupported > 0) failedCount.toFloat() / totalSupported else 0f
+
+                        Row(modifier = Modifier.fillMaxSize()) {
+                            if (passWeight > 0f) {
+                                Box(
+                                    modifier = Modifier
+                                        .weight(passWeight)
+                                        .fillMaxHeight()
+                                        .background(Color(0xFF00E676))
+                                )
+                            }
+                            if (failWeight > 0f) {
+                                Box(
+                                    modifier = Modifier
+                                        .weight(failWeight)
+                                        .fillMaxHeight()
+                                        .background(Color(0xFFFF5252))
+                                )
+                            }
+                            val remainWeight = 1f - (passWeight + failWeight)
+                            if (remainWeight > 0.01f) {
+                                Box(
+                                    modifier = Modifier
+                                        .weight(remainWeight.coerceAtLeast(0.01f))
+                                        .fillMaxHeight()
+                                        .background(Color.Transparent)
+                                )
+                            }
+                        }
+                    }
 
                     Spacer(modifier = Modifier.height(16.dp))
 
+                    // Action Buttons
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -176,16 +234,27 @@ fun DiagnosticsScreen(
                                 }
                             },
                             modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(12.dp)
+                            shape = RoundedCornerShape(14.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary
+                            )
                         ) {
                             Icon(Icons.Default.PlayArrow, contentDescription = "Run", modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text(if (pendingCount > 0) "Run Pending Tests" else "Run All Tests")
+                            Text(
+                                text = if (pendingCount > 0) "Run Pending ($pendingCount)" else "Run All Tests",
+                                fontWeight = FontWeight.Bold
+                            )
                         }
 
                         OutlinedButton(
                             onClick = { viewModel.resetAllTests() },
-                            shape = RoundedCornerShape(12.dp)
+                            shape = RoundedCornerShape(14.dp),
+                            border = androidx.compose.foundation.BorderStroke(
+                                1.dp,
+                                MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                            )
                         ) {
                             Icon(Icons.Default.Refresh, contentDescription = "Reset", modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(6.dp))
@@ -196,41 +265,40 @@ fun DiagnosticsScreen(
             }
         }
 
-        // 2. Filter chips
+        // 2. Modern 4-Tab Filter Bento Grid (All, Pending, Pass, Failed)
         item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                listOf(
-                    "All" to tests.size,
-                    "Pending" to pendingCount,
-                    "Passed" to passedCount,
-                    "Failed" to failedCount
-                ).forEach { (filterName, count) ->
-                    val isSelected = selectedFilter == filterName
-                    FilterChip(
-                        selected = isSelected,
-                        onClick = { selectedFilter = filterName },
-                        label = { Text("$filterName ($count)") },
-                        shape = RoundedCornerShape(10.dp),
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f),
-                            labelColor = MaterialTheme.colorScheme.onSurface
-                        )
-                    )
-                }
-            }
+            ModernTestFilterTabs(
+                selectedFilter = selectedFilter,
+                allCount = tests.size,
+                pendingCount = pendingCount,
+                passedCount = passedCount,
+                failedCount = failedCount,
+                onFilterSelected = { selectedFilter = it }
+            )
         }
 
-        // 3. Test items list
-        items(displayedTests, key = { it.type.name }) { testItem ->
-            DiagnosticTestCard(
-                item = testItem,
-                onTestClick = { viewModel.openInteractiveTest(testItem.type) }
-            )
+        // 3. Test items list or Empty state
+        if (displayedTests.isEmpty()) {
+            item {
+                ModernDiagnosticEmptyState(
+                    currentFilter = selectedFilter,
+                    onResetFilter = { selectedFilter = "All" },
+                    onRunPending = {
+                        val nextTest = tests.firstOrNull { it.status == TestStatus.NOT_RUN }
+                            ?: tests.firstOrNull()
+                        if (nextTest != null) {
+                            viewModel.openInteractiveTest(nextTest.type)
+                        }
+                    }
+                )
+            }
+        } else {
+            items(displayedTests, key = { it.type.name }) { testItem ->
+                DiagnosticTestCard(
+                    item = testItem,
+                    onTestClick = { viewModel.openInteractiveTest(testItem.type) }
+                )
+            }
         }
     }
 
@@ -260,6 +328,212 @@ fun DiagnosticsScreen(
     }
 }
 
+// Modern 4-Tab Filter Bento Grid (All, Pending, Pass, Failed)
+@Composable
+fun ModernTestFilterTabs(
+    selectedFilter: String,
+    allCount: Int,
+    pendingCount: Int,
+    passedCount: Int,
+    failedCount: Int,
+    onFilterSelected: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val tabs = listOf(
+        FilterTabItem("All", allCount, Icons.Default.Layers, MaterialTheme.colorScheme.primary),
+        FilterTabItem("Pending", pendingCount, Icons.Default.HourglassTop, Color(0xFFFFB300)),
+        FilterTabItem("Pass", passedCount, Icons.Default.CheckCircle, Color(0xFF00E676)),
+        FilterTabItem("Failed", failedCount, Icons.Default.Cancel, Color(0xFFFF5252))
+    )
+
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        tabs.forEach { tab ->
+            val isSelected = selectedFilter == tab.name || (tab.name == "Pass" && selectedFilter == "Passed")
+            val containerColor = if (isSelected) {
+                tab.accentColor.copy(alpha = 0.18f)
+            } else {
+                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
+            }
+            val borderColor = if (isSelected) {
+                tab.accentColor
+            } else {
+                MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)
+            }
+
+            Surface(
+                onClick = { onFilterSelected(tab.name) },
+                modifier = Modifier
+                    .weight(1f)
+                    .height(68.dp),
+                shape = RoundedCornerShape(16.dp),
+                color = containerColor,
+                border = androidx.compose.foundation.BorderStroke(if (isSelected) 1.8.dp else 1.dp, borderColor)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 4.dp, vertical = 6.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(3.dp)
+                    ) {
+                        Icon(
+                            imageVector = tab.icon,
+                            contentDescription = tab.name,
+                            tint = if (isSelected) tab.accentColor else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Text(
+                            text = "${tab.count}",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = if (isSelected) tab.accentColor else MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(2.dp))
+
+                    Text(
+                        text = tab.name,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                        color = if (isSelected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1
+                    )
+                }
+            }
+        }
+    }
+}
+
+private data class FilterTabItem(
+    val name: String,
+    val count: Int,
+    val icon: ImageVector,
+    val accentColor: Color
+)
+
+@Composable
+fun ModernDiagnosticEmptyState(
+    currentFilter: String,
+    onResetFilter: () -> Unit,
+    onRunPending: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(22.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+            contentColor = MaterialTheme.colorScheme.onSurface
+        ),
+        border = androidx.compose.foundation.BorderStroke(
+            1.dp,
+            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            val (icon, title, desc, accent) = when (currentFilter) {
+                "Failed" -> Quadruple(
+                    Icons.Default.VerifiedUser,
+                    "Zero Hardware Failures",
+                    "All tested sensors, audio devices, and display systems passed with zero defects detected.",
+                    Color(0xFF00E676)
+                )
+                "Pending" -> Quadruple(
+                    Icons.Default.EmojiEvents,
+                    "All Diagnostics Complete!",
+                    "Every hardware component has been tested. Check the Pass tab to review results.",
+                    Color(0xFFFFB300)
+                )
+                "Pass" -> Quadruple(
+                    Icons.Default.PlayCircle,
+                    "No Tests Passed Yet",
+                    "Begin interactive diagnostics to verify display, touchscreen, audio, and sensors.",
+                    MaterialTheme.colorScheme.primary
+                )
+                else -> Quadruple(
+                    Icons.Default.FactCheck,
+                    "No Diagnostic Tests Found",
+                    "Hardware tests could not be loaded.",
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            Box(
+                modifier = Modifier
+                    .size(64.dp)
+                    .clip(CircleShape)
+                    .background(accent.copy(alpha = 0.15f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = title,
+                    tint = accent,
+                    modifier = Modifier.size(34.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            Text(
+                text = desc,
+                style = MaterialTheme.typography.bodySmall,
+                textAlign = TextAlign.Center,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 16.dp)
+            )
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                if (currentFilter == "Failed" || currentFilter == "Pending") {
+                    Button(
+                        onClick = onResetFilter,
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text("View All Tests", fontWeight = FontWeight.Bold)
+                    }
+                } else if (currentFilter == "Pass") {
+                    Button(
+                        onClick = onRunPending,
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Start Tests", fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+    }
+}
+
+private data class Quadruple<A, B, C, D>(val first: A, val second: B, val third: C, val fourth: D)
+
 @Composable
 fun DiagnosticTestCard(
     item: DiagnosticTestItem,
@@ -270,62 +544,151 @@ fun DiagnosticTestCard(
         modifier = modifier
             .fillMaxWidth()
             .clickable(enabled = item.status != TestStatus.NOT_SUPPORTED) { onTestClick() },
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
             contentColor = MaterialTheme.colorScheme.onSurface
         ),
         border = androidx.compose.foundation.BorderStroke(
             1.dp,
-            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)
+            if (item.status == TestStatus.PASSED) Color(0xFF00E676).copy(alpha = 0.3f)
+            else if (item.status == TestStatus.FAILED) Color(0xFFFF5252).copy(alpha = 0.4f)
+            else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)
         )
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+                .padding(16.dp)
         ) {
+            // Header: Category Pill & Status Badge
             Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(42.dp)
-                        .clip(CircleShape)
-                        .background(getTestIconBgColor(item.status)),
-                    contentAlignment = Alignment.Center
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f)
                 ) {
-                    Icon(
-                        imageVector = getTestIcon(item.type),
-                        contentDescription = item.title,
-                        tint = getTestIconColor(item.status),
-                        modifier = Modifier.size(22.dp)
+                    Text(
+                        text = getTestCategory(item.type),
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 0.8.sp,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                     )
                 }
 
-                Column {
-                    Text(
-                        text = item.title,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        text = item.description,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+                TestStatusBadge(status = item.status)
             }
 
-            Spacer(modifier = Modifier.width(8.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
-            TestStatusBadge(status = item.status)
+            // Body: Icon + Title & Description + Quick Action
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(46.dp)
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(getTestIconBgColor(item.status)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = getTestIcon(item.type),
+                            contentDescription = item.title,
+                            tint = getTestIconColor(item.status),
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+
+                    Column {
+                        Text(
+                            text = item.title,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = item.description,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        if (item.details != null && item.details.isNotBlank()) {
+                            Spacer(modifier = Modifier.height(3.dp))
+                            Text(
+                                text = item.details,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = if (item.status == TestStatus.PASSED) Color(0xFF00E676)
+                                else if (item.status == TestStatus.FAILED) Color(0xFFFF5252)
+                                else MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(10.dp))
+
+                // Instant Test Action Button
+                if (item.status != TestStatus.NOT_SUPPORTED) {
+                    Surface(
+                        onClick = onTestClick,
+                        shape = RoundedCornerShape(12.dp),
+                        color = when (item.status) {
+                            TestStatus.NOT_RUN -> MaterialTheme.colorScheme.primary
+                            TestStatus.FAILED -> MaterialTheme.colorScheme.errorContainer
+                            TestStatus.PASSED -> MaterialTheme.colorScheme.surfaceVariant
+                            else -> MaterialTheme.colorScheme.primaryContainer
+                        },
+                        contentColor = when (item.status) {
+                            TestStatus.NOT_RUN -> MaterialTheme.colorScheme.onPrimary
+                            TestStatus.FAILED -> MaterialTheme.colorScheme.onErrorContainer
+                            TestStatus.PASSED -> MaterialTheme.colorScheme.onSurfaceVariant
+                            else -> MaterialTheme.colorScheme.onPrimaryContainer
+                        }
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Icon(
+                                imageVector = if (item.status == TestStatus.NOT_RUN) Icons.Default.PlayArrow else Icons.Default.Refresh,
+                                contentDescription = "Test action",
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Text(
+                                text = if (item.status == TestStatus.NOT_RUN) "Test" else "Retest",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+            }
         }
+    }
+}
+
+private fun getTestCategory(type: TestType): String {
+    return when (type) {
+        TestType.DISPLAY, TestType.TOUCHSCREEN -> "DISPLAY & TOUCH"
+        TestType.SPEAKER, TestType.EARPIECE, TestType.MICROPHONE, TestType.HEADSET, TestType.VIBRATION -> "AUDIO & HAPTICS"
+        TestType.FLASHLIGHT, TestType.PROXIMITY, TestType.LIGHT_SENSOR, TestType.ACCELEROMETER, TestType.GYROSCOPE, TestType.COMPASS -> "SENSORS & MOTION"
+        TestType.FINGERPRINT, TestType.VOLUME_BUTTONS, TestType.BLUETOOTH, TestType.CHARGING -> "PORTS & HARDWARE"
+        TestType.VULKAN -> "GRAPHICS & GPU"
     }
 }
 
@@ -333,20 +696,20 @@ fun DiagnosticTestCard(
 fun TestStatusBadge(status: TestStatus) {
     val (bgColor, textColor, label, icon) = when (status) {
         TestStatus.PASSED -> Tuple4(
-            MaterialTheme.colorScheme.primaryContainer,
-            MaterialTheme.colorScheme.onPrimaryContainer,
-            "Pass",
+            Color(0xFF00E676).copy(alpha = 0.18f),
+            Color(0xFF00E676),
+            "Pass ✓",
             Icons.Default.CheckCircle
         )
         TestStatus.FAILED -> Tuple4(
-            MaterialTheme.colorScheme.errorContainer,
-            MaterialTheme.colorScheme.onErrorContainer,
-            "Fail",
+            Color(0xFFFF5252).copy(alpha = 0.18f),
+            Color(0xFFFF5252),
+            "Failed ✕",
             Icons.Default.Cancel
         )
         TestStatus.NOT_SUPPORTED -> Tuple4(
             MaterialTheme.colorScheme.surfaceVariant,
-            MaterialTheme.colorScheme.onSurfaceVariant,
+            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
             "N/A",
             Icons.Default.Block
         )
@@ -357,10 +720,10 @@ fun TestStatusBadge(status: TestStatus) {
             Icons.Default.Sync
         )
         TestStatus.NOT_RUN -> Tuple4(
-            MaterialTheme.colorScheme.surface,
-            MaterialTheme.colorScheme.onSurfaceVariant,
-            "Ready",
-            Icons.Default.PlayCircleOutline
+            Color(0xFFFFB300).copy(alpha = 0.15f),
+            Color(0xFFFFB300),
+            "Pending",
+            Icons.Default.HourglassTop
         )
     }
 
@@ -369,7 +732,7 @@ fun TestStatusBadge(status: TestStatus) {
         color = bgColor
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+            modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
@@ -382,7 +745,7 @@ fun TestStatusBadge(status: TestStatus) {
             Text(
                 text = label,
                 style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Bold,
+                fontWeight = FontWeight.ExtraBold,
                 color = textColor
             )
         }
