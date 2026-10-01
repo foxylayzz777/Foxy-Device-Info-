@@ -121,9 +121,13 @@ data class VulkanSpec(
     val hardwareLevel: Int, // 0 = Level 0 (basic), 1 = Level 1 (full hardware)
     val hardwareComputeLevel: Int,
     val is64BitAbi: Boolean,
-    val isVulkanModSupported: Boolean,
-    val vulkanModStatus: String,
-    val compatibilityDetails: List<String>
+    val isVulkanHardwareAccelerated: Boolean = false,
+    val vulkanDriverStatus: String = "Not Supported",
+    val compatibilityDetails: List<String>,
+    @Deprecated("Replaced by vulkanDriverStatus")
+    val isVulkanModSupported: Boolean = isVulkanHardwareAccelerated,
+    @Deprecated("Replaced by vulkanDriverStatus")
+    val vulkanModStatus: String = vulkanDriverStatus
 )
 
 data class FullDeviceInfo(
@@ -145,8 +149,8 @@ data class FullDeviceInfo(
         hardwareLevel = -1,
         hardwareComputeLevel = -1,
         is64BitAbi = false,
-        isVulkanModSupported = false,
-        vulkanModStatus = "Not Supported",
+        isVulkanHardwareAccelerated = false,
+        vulkanDriverStatus = "Not Supported",
         compatibilityDetails = emptyList()
     )
 )

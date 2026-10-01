@@ -360,7 +360,7 @@ fun MyApplicationTheme(
     dynamicColor: Boolean = true,
     content: @Composable () -> Unit
 ) = FoxyTheme(
-    themeStyle = if (dynamicColor) AppThemeStyle.DYNAMIC else AppThemeStyle.FOXY,
+    themeStyle = if (dynamicColor) AppThemeStyle.DYNAMIC else AppThemeStyle.LIQUID_GLASS,
     themeMode = if (darkTheme) AppThemeMode.DARK else AppThemeMode.LIGHT,
     content = content
 )

@@ -52,12 +52,12 @@ object DeviceReportExporter {
             appendLine("- **Physical Size:** ~${deviceInfo.gpuDisplay.screenPhysicalInches}")
             appendLine("- **HDR Support:** ${if (deviceInfo.gpuDisplay.isHdrSupported) "Yes (${deviceInfo.gpuDisplay.hdrCapabilities})" else "SDR"}")
             appendLine()
-            appendLine("## 🎮 Vulkan API & VulkanMod Gaming")
+            appendLine("## 🎮 Vulkan Graphics API Specifications")
             appendLine("- **Vulkan API Version:** ${deviceInfo.vulkan.apiVersionString}")
             appendLine("- **Hardware Level:** Level ${deviceInfo.vulkan.hardwareLevel}")
             appendLine("- **Compute Shaders:** ${if (deviceInfo.vulkan.hardwareComputeLevel >= 0) "Supported (Level ${deviceInfo.vulkan.hardwareComputeLevel})" else "None"}")
             appendLine("- **64-Bit ABI:** ${if (deviceInfo.vulkan.is64BitAbi) "Yes" else "No"}")
-            appendLine("- **VulkanMod Status:** ${deviceInfo.vulkan.vulkanModStatus}")
+            appendLine("- **Driver Status:** ${if (deviceInfo.vulkan.isVulkanSupported) "Supported & Hardware Accelerated" else "Unavailable"}")
             for (detail in deviceInfo.vulkan.compatibilityDetails) {
                 appendLine("  $detail")
             }

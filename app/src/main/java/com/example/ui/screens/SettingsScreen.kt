@@ -1,9 +1,15 @@
 package com.example.ui.screens
 
+import android.appwidget.AppWidgetManager
+import android.content.ComponentName
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
+import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -22,12 +28,14 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ui.components.InfoRowItem
 import com.example.ui.theme.AppThemeMode
 import com.example.ui.theme.AppThemeStyle
 import com.example.ui.viewmodel.FoxyViewModel
+import com.example.widget.FoxyAppWidgetProvider
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -138,7 +146,7 @@ fun SettingsScreen(
                         Spacer(modifier = Modifier.height(14.dp))
 
                         Text(
-                            text = "Check out gaming tests, benchmarks, tech reviews and PojavLauncher/VulkanMod tutorials on the official channel!",
+                            text = "Check out device tests, gaming benchmarks, and hardware reviews on the official channel!",
                             style = MaterialTheme.typography.bodyMedium,
                             color = Color(0xFFCCCCCC)
                         )
@@ -197,11 +205,22 @@ fun SettingsScreen(
 
                     Spacer(modifier = Modifier.height(14.dp))
 
-                    Text(
-                        text = "Choose Theme Style",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Choose Theme Style",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = "Saved permanently",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
 
                     Spacer(modifier = Modifier.height(8.dp))
 
@@ -598,30 +617,12 @@ fun SettingsScreen(
             }
         }
 
-        // Material You Home Screen Widget Section
+        // Material You Home Screen Widget Studio & Customizer
         item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(18.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                    contentColor = MaterialTheme.colorScheme.onSurface
-                )
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Widgets, contentDescription = "Widgets", tint = MaterialTheme.colorScheme.secondary)
-                        Spacer(modifier = Modifier.width(10.dp))
-                        Text("Material You Home Widgets", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
-                    }
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "Add the Foxy Battery & Memory Glance widget to your home screen by long-pressing your desktop and selecting 'Foxy Info'.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
+            HomeScreenWidgetStudioCard(
+                context = context,
+                deviceInfo = deviceInfo
+            )
         }
 
         // Privacy First & Privacy Policy Section
@@ -785,3 +786,619 @@ fun SettingsScreen(
         )
     }
 }
+
+@Composable
+private fun HomeScreenWidgetStudioCard(
+    context: Context,
+    deviceInfo: com.example.data.model.FullDeviceInfo?
+) {
+    val prefs = remember { context.getSharedPreferences("foxy_device_info_prefs", Context.MODE_PRIVATE) }
+
+    var widgetTheme by remember {
+        mutableStateOf(prefs.getString("widget_theme_style", "LIQUID_GLASS") ?: "LIQUID_GLASS")
+    }
+    var titleMode by remember {
+        mutableStateOf(prefs.getString("widget_title_mode", "SOC_NAME") ?: "SOC_NAME")
+    }
+    var customTitle by remember {
+        mutableStateOf(prefs.getString("widget_custom_title", "") ?: "")
+    }
+    var showCpu by remember { mutableStateOf(prefs.getBoolean("widget_show_cpu", true)) }
+    var showRam by remember { mutableStateOf(prefs.getBoolean("widget_show_ram", true)) }
+    var showStorage by remember { mutableStateOf(prefs.getBoolean("widget_show_storage", true)) }
+    var showBattery by remember { mutableStateOf(prefs.getBoolean("widget_show_battery", true)) }
+    var showNetwork by remember { mutableStateOf(prefs.getBoolean("widget_show_network", true)) }
+    var showDisplay by remember { mutableStateOf(prefs.getBoolean("widget_show_display", true)) }
+    var showActions by remember { mutableStateOf(prefs.getBoolean("widget_show_actions", true)) }
+    var showUptime by remember { mutableStateOf(prefs.getBoolean("widget_show_uptime", true)) }
+
+    fun syncPreferences() {
+        prefs.edit().apply {
+            putString("widget_theme_style", widgetTheme)
+            putString("widget_title_mode", titleMode)
+            putString("widget_custom_title", customTitle)
+            putBoolean("widget_show_cpu", showCpu)
+            putBoolean("widget_show_ram", showRam)
+            putBoolean("widget_show_storage", showStorage)
+            putBoolean("widget_show_battery", showBattery)
+            putBoolean("widget_show_network", showNetwork)
+            putBoolean("widget_show_display", showDisplay)
+            putBoolean("widget_show_actions", showActions)
+            putBoolean("widget_show_uptime", showUptime)
+            apply()
+        }
+        FoxyAppWidgetProvider.updateAllWidgets(context)
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(22.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
+            contentColor = MaterialTheme.colorScheme.onSurface
+        ),
+        border = androidx.compose.foundation.BorderStroke(
+            1.dp,
+            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
+        )
+    ) {
+        Column(modifier = Modifier.padding(18.dp)) {
+            // Header
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(38.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Widgets,
+                            contentDescription = "Widgets",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Column {
+                        Text(
+                            text = "Home Screen Widget Studio",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = "Live telemetry glance & customizer",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = MaterialTheme.colorScheme.primaryContainer
+                ) {
+                    Text(
+                        text = "Live Sync ✓",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // 1. Interactive Live Preview of Home Screen Widget
+            Text(
+                text = "Live Widget Preview (Home Screen Appearance):",
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Preview Container Box matching selected theme
+            val previewBgColor = when (widgetTheme) {
+                "AMOLED" -> Color(0xFF000000)
+                "FOXY" -> Color(0xFF16082B)
+                "GAMING" -> Color(0xFF08150C)
+                "CYBERPUNK" -> Color(0xFF150529)
+                "RETRO_AMBER" -> Color(0xFF1A1308)
+                "MINIMAL_FROST" -> Color(0xFF22242D)
+                else -> Color(0xFF0A1830) // Liquid glass
+            }
+            val previewBorderColor = when (widgetTheme) {
+                "AMOLED" -> Color(0xFF333333)
+                "FOXY" -> Color(0xFF7C4DFF)
+                "GAMING" -> Color(0xFF00E676)
+                "CYBERPUNK" -> Color(0xFF00E5FF)
+                "RETRO_AMBER" -> Color(0xFFFFB300)
+                "MINIMAL_FROST" -> Color(0xFF888899)
+                else -> Color(0xFF00E5FF)
+            }
+            val previewAccentColor = when (widgetTheme) {
+                "AMOLED" -> Color(0xFFFFFFFF)
+                "FOXY" -> Color(0xFFB388FF)
+                "GAMING" -> Color(0xFF00E676)
+                "CYBERPUNK" -> Color(0xFF00E5FF)
+                "RETRO_AMBER" -> Color(0xFFFFD54F)
+                "MINIMAL_FROST" -> Color(0xFFE0E0FF)
+                else -> Color(0xFF00E5FF)
+            }
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(previewBgColor)
+                    .border(1.2.dp, previewBorderColor.copy(alpha = 0.5f), RoundedCornerShape(20.dp))
+                    .padding(14.dp)
+            ) {
+                Column {
+                    // Preview Header
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("🦊", fontSize = 18.sp)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            val soc = deviceInfo?.cpu?.socName ?: Build.HARDWARE
+                            val previewTitle = when (titleMode) {
+                                "CUSTOM" -> if (customTitle.isNotBlank()) customTitle else "My Device"
+                                "DEVICE_MODEL" -> "${Build.MANUFACTURER} ${Build.MODEL}"
+                                "APP_NAME" -> "Foxy Device Info"
+                                else -> if (soc.isNotBlank() && soc != "unknown") soc else Build.MODEL
+                            }
+                            Text(
+                                text = previewTitle,
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                            Text(
+                                text = "Android ${Build.VERSION.RELEASE} • 64-Bit",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = previewAccentColor
+                            )
+                        }
+                        Text(
+                            text = "${deviceInfo?.battery?.levelPercent ?: 85}% ⚡",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFFFFD54F),
+                            modifier = Modifier.padding(end = 6.dp)
+                        )
+                        Text("🔄", fontSize = 14.sp)
+                    }
+
+                    HorizontalDivider(
+                        color = Color.White.copy(alpha = 0.15f),
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    )
+
+                    // CPU Row
+                    if (showCpu) {
+                        Column(modifier = Modifier.padding(bottom = 6.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("⚡ CPU Load", style = MaterialTheme.typography.labelSmall, color = Color(0xFFB0BEC5))
+                                Text("28% • ${deviceInfo?.cpu?.totalCores ?: 8} Cores", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = previewAccentColor)
+                            }
+                            Spacer(modifier = Modifier.height(2.dp))
+                            LinearProgressIndicator(
+                                progress = { 0.28f },
+                                modifier = Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp)),
+                                color = previewAccentColor,
+                                trackColor = Color.White.copy(alpha = 0.15f)
+                            )
+                        }
+                    }
+
+                    // RAM Row
+                    if (showRam) {
+                        val ramTotalGb = (deviceInfo?.memoryStorage?.totalRamBytes ?: (8L * 1024 * 1024 * 1024)) / (1024.0 * 1024.0 * 1024.0)
+                        val ramAvailGb = (deviceInfo?.memoryStorage?.availableRamBytes ?: (4L * 1024 * 1024 * 1024)) / (1024.0 * 1024.0 * 1024.0)
+                        val ramUsedGb = ramTotalGb - ramAvailGb
+                        val ramPct = if (ramTotalGb > 0) ((ramUsedGb / ramTotalGb) * 100).toInt() else 48
+
+                        Column(modifier = Modifier.padding(bottom = 6.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("🧠 RAM Memory", style = MaterialTheme.typography.labelSmall, color = Color(0xFFB0BEC5))
+                                Text(
+                                    String.format(Locale.US, "%.1f / %.1f GB (%d%%)", ramUsedGb, ramTotalGb, ramPct),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFFB388FF)
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(2.dp))
+                            LinearProgressIndicator(
+                                progress = { (ramPct / 100f).coerceIn(0f, 1f) },
+                                modifier = Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp)),
+                                color = Color(0xFFB388FF),
+                                trackColor = Color.White.copy(alpha = 0.15f)
+                            )
+                        }
+                    }
+
+                    // Storage Row
+                    if (showStorage) {
+                        val totalBytes = deviceInfo?.memoryStorage?.totalStorageBytes ?: (256L * 1024 * 1024 * 1024)
+                        val availBytes = deviceInfo?.memoryStorage?.availableStorageBytes ?: (192L * 1024 * 1024 * 1024)
+                        val usedBytes = totalBytes - availBytes
+                        val storageTotalGb = totalBytes / (1024.0 * 1024.0 * 1024.0)
+                        val storageUsedGb = usedBytes / (1024.0 * 1024.0 * 1024.0)
+                        val storagePct = if (totalBytes > 0) ((usedBytes.toDouble() / totalBytes) * 100).toInt() else 25
+
+                        Column(modifier = Modifier.padding(bottom = 6.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("💾 Internal Storage", style = MaterialTheme.typography.labelSmall, color = Color(0xFFB0BEC5))
+                                Text(
+                                    String.format(Locale.US, "%.1f / %.1f GB (%d%%)", storageUsedGb, storageTotalGb, storagePct),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF80CBC4)
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(2.dp))
+                            LinearProgressIndicator(
+                                progress = { (storagePct / 100f).coerceIn(0f, 1f) },
+                                modifier = Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp)),
+                                color = Color(0xFF80CBC4),
+                                trackColor = Color.White.copy(alpha = 0.15f)
+                            )
+                        }
+                    }
+
+                    // Battery & Uptime Row
+                    if (showBattery || showUptime) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(bottom = if (showNetwork || showDisplay || showActions) 6.dp else 0.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            if (showBattery) {
+                                Text(
+                                    text = "🌡️ Battery: ${deviceInfo?.battery?.temperatureCelsius ?: 31}°C • Good • 4120mV",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = Color(0xFFB0BEC5)
+                                )
+                            }
+                            if (showUptime) {
+                                Text(
+                                    text = "Up: 24h 12m",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = Color(0xFF90CAF9)
+                                )
+                            }
+                        }
+                    }
+
+                    // Network Row
+                    if (showNetwork) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(bottom = if (showDisplay || showActions) 6.dp else 0.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("📶 Network", style = MaterialTheme.typography.labelSmall, color = Color(0xFFB0BEC5))
+                            Text("Wi-Fi Connected 🛜 • 5 GHz", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = Color(0xFF4DD0E1))
+                        }
+                    }
+
+                    // Display Row
+                    if (showDisplay) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(bottom = if (showActions) 8.dp else 0.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("🖥️ Display", style = MaterialTheme.typography.labelSmall, color = Color(0xFFB0BEC5))
+                            Text("${deviceInfo?.gpuDisplay?.refreshRateHz?.toInt() ?: 120}Hz • ${deviceInfo?.gpuDisplay?.resolution ?: "1080×2400"}", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = Color(0xFFFFD54F))
+                        }
+                    }
+
+                    // Quick Actions Row
+                    if (showActions) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            listOf("🚀 Monitor", "🛠️ Tests", "📱 Apps", "⚙️ Customize").forEach { label ->
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = Color.White.copy(alpha = 0.15f),
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Text(
+                                        text = label,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White,
+                                        textAlign = TextAlign.Center,
+                                        modifier = Modifier.padding(vertical = 4.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // 2. Widget Visual Theme Selector
+            Text(
+                text = "Widget Visual Theme Style (7 Styles):",
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                items(listOf(
+                    "LIQUID_GLASS" to "🫧 Liquid Glass",
+                    "AMOLED" to "🖤 AMOLED Dark",
+                    "FOXY" to "🦊 Foxy Violet",
+                    "GAMING" to "🎮 RGB Gaming",
+                    "CYBERPUNK" to "⚡ Cyber Neon",
+                    "RETRO_AMBER" to "🏆 Retro Gold",
+                    "MINIMAL_FROST" to "❄️ Minimal Frost"
+                )) { (themeId, label) ->
+                    val isSelected = widgetTheme == themeId
+                    FilterChip(
+                        selected = isSelected,
+                        onClick = {
+                            widgetTheme = themeId
+                            syncPreferences()
+                        },
+                        label = { Text(label) },
+                        shape = RoundedCornerShape(10.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // 3. Header Title Mode
+            Text(
+                text = "Header Chipset / Title Label:",
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                listOf(
+                    "SOC_NAME" to "⚡ SoC",
+                    "DEVICE_MODEL" to "📱 Model",
+                    "APP_NAME" to "🦊 App",
+                    "CUSTOM" to "✏️ Custom"
+                ).forEach { (modeId, label) ->
+                    val isSelected = titleMode == modeId
+                    FilterChip(
+                        selected = isSelected,
+                        onClick = {
+                            titleMode = modeId
+                            syncPreferences()
+                        },
+                        label = { Text(label, style = MaterialTheme.typography.labelSmall) },
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+
+            if (titleMode == "CUSTOM") {
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = customTitle,
+                    onValueChange = {
+                        customTitle = it
+                        syncPreferences()
+                    },
+                    label = { Text("Custom Widget Title / Nickname") },
+                    placeholder = { Text("e.g. Foxy Phone, Beast Edition 🦊") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // 4. Metric Display Toggles
+            Text(
+                text = "Hardware Metrics & Panels to Display in Widget:",
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                WidgetToggleRow(
+                    title = "CPU Load & Core Count",
+                    subtitle = "Real-time CPU percentage & mini progress bar",
+                    checked = showCpu,
+                    onCheckedChange = {
+                        showCpu = it
+                        syncPreferences()
+                    }
+                )
+                WidgetToggleRow(
+                    title = "RAM Memory Usage",
+                    subtitle = "Active used RAM, total capacity & progress bar",
+                    checked = showRam,
+                    onCheckedChange = {
+                        showRam = it
+                        syncPreferences()
+                    }
+                )
+                WidgetToggleRow(
+                    title = "Internal Storage (ROM)",
+                    subtitle = "Disk capacity, used GB & storage bar",
+                    checked = showStorage,
+                    onCheckedChange = {
+                        showStorage = it
+                        syncPreferences()
+                    }
+                )
+                WidgetToggleRow(
+                    title = "Battery & Thermal State",
+                    subtitle = "Charge %, charging lightning badge, voltage & temperature",
+                    checked = showBattery,
+                    onCheckedChange = {
+                        showBattery = it
+                        syncPreferences()
+                    }
+                )
+                WidgetToggleRow(
+                    title = "Network Connectivity",
+                    subtitle = "Wi-Fi SSID, cellular state & connection badge",
+                    checked = showNetwork,
+                    onCheckedChange = {
+                        showNetwork = it
+                        syncPreferences()
+                    }
+                )
+                WidgetToggleRow(
+                    title = "Display & Refresh Rate",
+                    subtitle = "Screen Hz rate and native panel resolution",
+                    checked = showDisplay,
+                    onCheckedChange = {
+                        showDisplay = it
+                        syncPreferences()
+                    }
+                )
+                WidgetToggleRow(
+                    title = "Quick Navigation Actions",
+                    subtitle = "Shortcut pills for Monitor, Tests, Apps & Customize",
+                    checked = showActions,
+                    onCheckedChange = {
+                        showActions = it
+                        syncPreferences()
+                    }
+                )
+                WidgetToggleRow(
+                    title = "System Uptime",
+                    subtitle = "Elapsed operating time since boot",
+                    checked = showUptime,
+                    onCheckedChange = {
+                        showUptime = it
+                        syncPreferences()
+                    }
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // 5. Actions: Add to Home Screen & Sync
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Button(
+                    onClick = {
+                        syncPreferences()
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                            val appWidgetManager = context.getSystemService(AppWidgetManager::class.java)
+                            val myProvider = ComponentName(context, FoxyAppWidgetProvider::class.java)
+                            if (appWidgetManager.isRequestPinAppWidgetSupported) {
+                                appWidgetManager.requestPinAppWidget(myProvider, null, null)
+                                Toast.makeText(context, "Adding widget to home screen...", Toast.LENGTH_SHORT).show()
+                            } else {
+                                Toast.makeText(context, "Long-press home screen desktop and select 'Foxy Hardware' widget", Toast.LENGTH_LONG).show()
+                            }
+                        } else {
+                            Toast.makeText(context, "Long-press home screen desktop and select 'Foxy Hardware' widget", Toast.LENGTH_LONG).show()
+                        }
+                    },
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Icon(Icons.Default.AddHome, contentDescription = "Add Widget", modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Pin to Home Screen")
+                }
+
+                OutlinedButton(
+                    onClick = {
+                        syncPreferences()
+                        Toast.makeText(context, "Widgets refreshed with custom settings! ✓", Toast.LENGTH_SHORT).show()
+                    },
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Icon(Icons.Default.Sync, contentDescription = "Sync", modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Sync")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun WidgetToggleRow(
+    title: String,
+    subtitle: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onCheckedChange(!checked) }
+            .padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange
+        )
+    }
+}
+

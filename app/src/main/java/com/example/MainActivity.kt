@@ -1,5 +1,6 @@
 package com.example
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -47,26 +48,53 @@ enum class FoxyTab(
 }
 
 class MainActivity : ComponentActivity() {
+    private var requestedTab = mutableStateOf<FoxyTab?>(null)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        handleIntentTab(intent)
         setContent {
             val viewModel: FoxyViewModel = viewModel()
             val themeStyle by viewModel.themeStyle.collectAsState()
             val themeMode by viewModel.themeMode.collectAsState()
+            val targetTab by requestedTab
 
             FoxyTheme(themeStyle = themeStyle, themeMode = themeMode) {
-                FoxyApp(viewModel = viewModel)
+                FoxyApp(viewModel = viewModel, externalTab = targetTab)
             }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleIntentTab(intent)
+    }
+
+    private fun handleIntentTab(intent: Intent?) {
+        val target = intent?.getStringExtra("target_tab") ?: return
+        requestedTab.value = when (target) {
+            "MONITOR" -> FoxyTab.MONITOR
+            "DIAGNOSTICS", "TESTS" -> FoxyTab.TESTS
+            "APPS" -> FoxyTab.APPS
+            "SETTINGS" -> FoxyTab.SETTINGS
+            else -> FoxyTab.HOME
         }
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FoxyApp(viewModel: FoxyViewModel) {
+fun FoxyApp(viewModel: FoxyViewModel, externalTab: FoxyTab? = null) {
     val context = LocalContext.current
     var currentTab by remember { mutableStateOf(FoxyTab.HOME) }
+
+    LaunchedEffect(externalTab) {
+        if (externalTab != null) {
+            currentTab = externalTab
+        }
+    }
 
     // If on non-home tab, back button returns to Home first
     BackHandler(enabled = currentTab != FoxyTab.HOME) {

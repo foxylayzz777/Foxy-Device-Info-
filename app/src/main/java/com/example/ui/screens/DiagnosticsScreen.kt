@@ -1,17 +1,31 @@
 package com.example.ui.screens
 
+import android.Manifest
+import android.bluetooth.BluetoothAdapter
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.content.pm.PackageManager
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
+import android.media.AudioManager
+import android.os.BatteryManager
+import android.view.KeyEvent
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.AnimatedVisibility
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -24,9 +38,17 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.key.*
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -35,13 +57,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.core.content.ContextCompat
 import com.example.data.model.DiagnosticTestItem
 import com.example.data.model.TestStatus
 import com.example.data.model.TestType
 import com.example.ui.viewmodel.FoxyViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlin.math.roundToInt
+import kotlin.math.abs
+import kotlin.math.cos
+import kotlin.math.sin
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -49,13 +74,12 @@ fun DiagnosticsScreen(
     viewModel: FoxyViewModel,
     modifier: Modifier = Modifier
 ) {
-    val context = LocalContext.current
-    val coroutineScope = rememberCoroutineScope()
     val tests by viewModel.diagnosticTests.collectAsState()
     val activeTest by viewModel.activeInteractiveTest.collectAsState()
 
     val passedCount = tests.count { it.status == TestStatus.PASSED }
     val failedCount = tests.count { it.status == TestStatus.FAILED }
+    val pendingCount = tests.count { it.status == TestStatus.NOT_RUN }
     val totalSupported = tests.count { it.status != TestStatus.NOT_SUPPORTED }
     val testProgress = if (totalSupported > 0) passedCount.toFloat() / totalSupported else 0f
 
@@ -74,20 +98,24 @@ fun DiagnosticsScreen(
         modifier = modifier
             .fillMaxSize()
             .padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
         contentPadding = PaddingValues(top = 16.dp, bottom = 32.dp)
     ) {
-        // Summary & Test Runner Card
+        // 1. Hardware Health Overview Card
         item {
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(24.dp),
+                shape = RoundedCornerShape(22.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
                     contentColor = MaterialTheme.colorScheme.onSurface
+                ),
+                border = androidx.compose.foundation.BorderStroke(
+                    1.dp,
+                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
                 )
             ) {
-                Column(modifier = Modifier.padding(20.dp)) {
+                Column(modifier = Modifier.padding(18.dp)) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -95,28 +123,28 @@ fun DiagnosticsScreen(
                     ) {
                         Column {
                             Text(
-                                text = "Hardware Health",
+                                text = "Hardware Diagnostics",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
-                                text = "$passedCount passed • $failedCount failed",
+                                text = "$passedCount passed • $failedCount failed • $pendingCount pending",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
 
                         Surface(
-                            shape = RoundedCornerShape(16.dp),
-                            color = MaterialTheme.colorScheme.primaryContainer
+                            shape = RoundedCornerShape(14.dp),
+                            color = if (failedCount > 0) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.primaryContainer,
+                            contentColor = if (failedCount > 0) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onPrimaryContainer
                         ) {
                             Text(
                                 text = "${(testProgress * 100).toInt()}% Health",
                                 style = MaterialTheme.typography.labelMedium,
                                 fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
                             )
                         }
                     }
@@ -127,8 +155,8 @@ fun DiagnosticsScreen(
                         progress = { testProgress },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(10.dp)
-                            .clip(RoundedCornerShape(5.dp)),
+                            .height(8.dp)
+                            .clip(RoundedCornerShape(4.dp)),
                         color = MaterialTheme.colorScheme.primary,
                         trackColor = MaterialTheme.colorScheme.surface
                     )
@@ -141,25 +169,25 @@ fun DiagnosticsScreen(
                     ) {
                         Button(
                             onClick = {
-                                // Launch first un-run test
                                 val nextTest = tests.firstOrNull { it.status == TestStatus.NOT_RUN }
+                                    ?: tests.firstOrNull()
                                 if (nextTest != null) {
                                     viewModel.openInteractiveTest(nextTest.type)
                                 }
                             },
                             modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(14.dp)
+                            shape = RoundedCornerShape(12.dp)
                         ) {
-                            Icon(Icons.Default.PlayArrow, contentDescription = "Run")
+                            Icon(Icons.Default.PlayArrow, contentDescription = "Run", modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text("Run Tests")
+                            Text(if (pendingCount > 0) "Run Pending Tests" else "Run All Tests")
                         }
 
                         OutlinedButton(
                             onClick = { viewModel.resetAllTests() },
-                            shape = RoundedCornerShape(14.dp)
+                            shape = RoundedCornerShape(12.dp)
                         ) {
-                            Icon(Icons.Default.Refresh, contentDescription = "Reset")
+                            Icon(Icons.Default.Refresh, contentDescription = "Reset", modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(6.dp))
                             Text("Reset")
                         }
@@ -168,22 +196,28 @@ fun DiagnosticsScreen(
             }
         }
 
-        // Filter chips
+        // 2. Filter chips
         item {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                listOf("All", "Pending", "Passed", "Failed").forEach { filter ->
+                listOf(
+                    "All" to tests.size,
+                    "Pending" to pendingCount,
+                    "Passed" to passedCount,
+                    "Failed" to failedCount
+                ).forEach { (filterName, count) ->
+                    val isSelected = selectedFilter == filterName
                     FilterChip(
-                        selected = selectedFilter == filter,
-                        onClick = { selectedFilter = filter },
-                        label = { Text(filter) },
-                        shape = RoundedCornerShape(12.dp),
+                        selected = isSelected,
+                        onClick = { selectedFilter = filterName },
+                        label = { Text("$filterName ($count)") },
+                        shape = RoundedCornerShape(10.dp),
                         colors = FilterChipDefaults.filterChipColors(
                             selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
                             selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
+                            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f),
                             labelColor = MaterialTheme.colorScheme.onSurface
                         )
                     )
@@ -191,7 +225,7 @@ fun DiagnosticsScreen(
             }
         }
 
-        // Test items list
+        // 3. Test items list
         items(displayedTests, key = { it.type.name }) { testItem ->
             DiagnosticTestCard(
                 item = testItem,
@@ -202,11 +236,27 @@ fun DiagnosticsScreen(
 
     // Interactive Test Dialog Router
     if (activeTest != null) {
-        InteractiveTestModal(
-            testType = activeTest!!,
-            viewModel = viewModel,
-            onDismiss = { viewModel.closeInteractiveTest() }
-        )
+        val currentIndex = tests.indexOfFirst { it.type == activeTest }
+        val testNumber = if (currentIndex >= 0) currentIndex + 1 else 1
+
+        key(activeTest) {
+            InteractiveTestModal(
+                testType = activeTest!!,
+                testIndex = testNumber,
+                totalTests = tests.size,
+                viewModel = viewModel,
+                onDismiss = { viewModel.closeInteractiveTest() },
+                onNextTest = {
+                    val nextTest = tests.drop(currentIndex + 1).firstOrNull { it.status == TestStatus.NOT_RUN }
+                        ?: tests.firstOrNull { it.status == TestStatus.NOT_RUN }
+                    if (nextTest != null) {
+                        viewModel.openInteractiveTest(nextTest.type)
+                    } else {
+                        viewModel.closeInteractiveTest()
+                    }
+                }
+            )
+        }
     }
 }
 
@@ -220,27 +270,31 @@ fun DiagnosticTestCard(
         modifier = modifier
             .fillMaxWidth()
             .clickable(enabled = item.status != TestStatus.NOT_SUPPORTED) { onTestClick() },
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
             contentColor = MaterialTheme.colorScheme.onSurface
+        ),
+        border = androidx.compose.foundation.BorderStroke(
+            1.dp,
+            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)
         )
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(14.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
                 modifier = Modifier.weight(1f)
             ) {
                 Box(
                     modifier = Modifier
-                        .size(44.dp)
+                        .size(42.dp)
                         .clip(CircleShape)
                         .background(getTestIconBgColor(item.status)),
                     contentAlignment = Alignment.Center
@@ -249,7 +303,7 @@ fun DiagnosticTestCard(
                         imageVector = getTestIcon(item.type),
                         contentDescription = item.title,
                         tint = getTestIconColor(item.status),
-                        modifier = Modifier.size(24.dp)
+                        modifier = Modifier.size(22.dp)
                     )
                 }
 
@@ -300,22 +354,22 @@ fun TestStatusBadge(status: TestStatus) {
             MaterialTheme.colorScheme.tertiaryContainer,
             MaterialTheme.colorScheme.onTertiaryContainer,
             "Testing",
-            Icons.Default.HourglassTop
+            Icons.Default.Sync
         )
         TestStatus.NOT_RUN -> Tuple4(
             MaterialTheme.colorScheme.surface,
             MaterialTheme.colorScheme.onSurfaceVariant,
-            "Test",
-            Icons.Default.PlayArrow
+            "Ready",
+            Icons.Default.PlayCircleOutline
         )
     }
 
     Surface(
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(10.dp),
         color = bgColor
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
@@ -323,7 +377,7 @@ fun TestStatusBadge(status: TestStatus) {
                 imageVector = icon,
                 contentDescription = label,
                 tint = textColor,
-                modifier = Modifier.size(14.dp)
+                modifier = Modifier.size(13.dp)
             )
             Text(
                 text = label,
@@ -340,11 +394,28 @@ data class Tuple4<A, B, C, D>(val a: A, val b: B, val c: C, val d: D)
 @Composable
 fun InteractiveTestModal(
     testType: TestType,
+    testIndex: Int,
+    totalTests: Int,
     viewModel: FoxyViewModel,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onNextTest: () -> Unit
 ) {
     val context = LocalContext.current
-    val coroutineScope = rememberCoroutineScope()
+    val focusRequester = remember { FocusRequester() }
+
+    var volUpTriggered by remember { mutableStateOf(false) }
+    var volDownTriggered by remember { mutableStateOf(false) }
+
+    BackHandler(onBack = onDismiss)
+
+    LaunchedEffect(testType) {
+        if (testType == TestType.VOLUME_BUTTONS) {
+            delay(120)
+            try {
+                focusRequester.requestFocus()
+            } catch (_: Exception) {}
+        }
+    }
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -353,11 +424,32 @@ fun InteractiveTestModal(
         Surface(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp),
+                .padding(16.dp)
+                .focusRequester(focusRequester)
+                .focusable()
+                .onKeyEvent { keyEvent ->
+                    if (testType == TestType.VOLUME_BUTTONS && keyEvent.type == KeyEventType.KeyDown) {
+                        when (keyEvent.nativeKeyEvent.keyCode) {
+                            KeyEvent.KEYCODE_VOLUME_UP -> {
+                                volUpTriggered = true
+                                true
+                            }
+                            KeyEvent.KEYCODE_VOLUME_DOWN -> {
+                                volDownTriggered = true
+                                true
+                            }
+                            else -> false
+                        }
+                    } else false
+                },
             shape = RoundedCornerShape(24.dp),
             color = MaterialTheme.colorScheme.surface,
             contentColor = MaterialTheme.colorScheme.onSurface,
-            tonalElevation = 6.dp
+            tonalElevation = 6.dp,
+            border = androidx.compose.foundation.BorderStroke(
+                1.dp,
+                MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)
+            )
         ) {
             Column(
                 modifier = Modifier
@@ -366,37 +458,50 @@ fun InteractiveTestModal(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.SpaceBetween
             ) {
-                // Header
+                // Header: Step, Title, Close Button
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = "Hardware Test: ${testType.name.replace("_", " ")}",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
+                    Column {
+                        Text(
+                            text = "Test $testIndex of $totalTests",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = getTestTitle(testType),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
                     IconButton(onClick = onDismiss) {
                         Icon(Icons.Default.Close, contentDescription = "Close")
                     }
                 }
+
+                HorizontalDivider(
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
+                    modifier = Modifier.padding(vertical = 8.dp)
+                )
 
                 // Interactive Test Area
                 Box(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxWidth()
-                        .padding(vertical = 12.dp),
+                        .padding(vertical = 8.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     when (testType) {
                         TestType.DISPLAY -> DisplayTestCanvas()
-                        TestType.TOUCHSCREEN -> TouchscreenTestCanvas()
+                        TestType.TOUCHSCREEN -> TouchscreenCalibrationGrid()
                         TestType.SPEAKER -> SpeakerToneTest(viewModel, isEarpiece = false)
                         TestType.EARPIECE -> SpeakerToneTest(viewModel, isEarpiece = true)
-                        TestType.MICROPHONE -> MicrophoneDecibelTest()
+                        TestType.MICROPHONE -> MicrophoneDecibelTest(viewModel)
                         TestType.VIBRATION -> VibrationInteractiveTest(viewModel)
                         TestType.FLASHLIGHT -> FlashlightInteractiveTest(viewModel)
                         TestType.PROXIMITY -> ProximityInteractiveTest(context)
@@ -405,38 +510,58 @@ fun InteractiveTestModal(
                         TestType.GYROSCOPE -> GyroscopeInteractiveTest(context)
                         TestType.COMPASS -> CompassInteractiveTest(context)
                         TestType.FINGERPRINT -> FingerprintInteractiveTest(context)
-                        TestType.VOLUME_BUTTONS -> VolumeButtonsInteractiveTest()
+                        TestType.VOLUME_BUTTONS -> VolumeButtonsInteractiveTest(
+                            volUpPressed = volUpTriggered,
+                            volDownPressed = volDownTriggered,
+                            onVolUpClick = { volUpTriggered = true },
+                            onVolDownClick = { volDownTriggered = true }
+                        )
                         TestType.BLUETOOTH -> BluetoothCheckTest(context)
-                        TestType.CHARGING -> ChargingCheckTest(viewModel)
-                        TestType.HEADSET -> HeadsetCheckTest(viewModel)
+                        TestType.CHARGING -> ChargingCheckTest(context)
+                        TestType.HEADSET -> HeadsetCheckTest(context)
                         TestType.VULKAN -> VulkanDiagnosticTest(viewModel)
                     }
                 }
 
-                // Bottom Action buttons (Pass / Fail / Close)
-                Row(
+                // Bottom Action buttons (Pass / Fail / Next)
+                Column(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    OutlinedButton(
-                        onClick = { viewModel.setTestStatus(testType, TestStatus.FAILED) },
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        Icon(Icons.Default.Cancel, contentDescription = "Fail")
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Failed")
-                    }
+                        OutlinedButton(
+                            onClick = {
+                                viewModel.setTestStatus(testType, TestStatus.FAILED)
+                                onNextTest()
+                            },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                        ) {
+                            Icon(Icons.Default.Cancel, contentDescription = "Fail", modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Mark Failed")
+                        }
 
-                    Button(
-                        onClick = { viewModel.setTestStatus(testType, TestStatus.PASSED) },
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Icon(Icons.Default.CheckCircle, contentDescription = "Pass")
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Passed")
+                        Button(
+                            onClick = {
+                                viewModel.setTestStatus(testType, TestStatus.PASSED)
+                                onNextTest()
+                            },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        ) {
+                            Icon(Icons.Default.CheckCircle, contentDescription = "Pass", modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Mark Passed")
+                        }
                     }
                 }
             }
@@ -444,10 +569,20 @@ fun InteractiveTestModal(
     }
 }
 
-// 1. Display Test
+// 1. Display Test: Pure RGBW & CMYK Full Block Cycling
 @Composable
 private fun DisplayTestCanvas() {
-    val colors = listOf(Color.Red, Color.Green, Color.Blue, Color.White, Color.Black)
+    val colors = listOf(
+        Color.Red to "Pure Red (Check subpixels)",
+        Color.Green to "Pure Green (Check subpixels)",
+        Color.Blue to "Pure Blue (Check subpixels)",
+        Color.White to "Pure White (Check backlight uniformity)",
+        Color.Black to "Pure Black (Check light bleed / OLED off)",
+        Color.Yellow to "Yellow",
+        Color.Cyan to "Cyan",
+        Color.Magenta to "Magenta",
+        Color(0xFF888888) to "50% Gray Banding"
+    )
     var colorIndex by remember { mutableIntStateOf(0) }
 
     Column(
@@ -455,219 +590,436 @@ private fun DisplayTestCanvas() {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
+        val (currentColor, desc) = colors[colorIndex]
+
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
                 .clip(RoundedCornerShape(16.dp))
-                .background(colors[colorIndex])
+                .background(currentColor)
                 .clickable { colorIndex = (colorIndex + 1) % colors.size },
             contentAlignment = Alignment.Center
         ) {
             Surface(
                 shape = RoundedCornerShape(12.dp),
-                color = Color.Black.copy(alpha = 0.6f)
+                color = Color.Black.copy(alpha = 0.65f),
+                contentColor = Color.White
             ) {
-                Text(
-                    text = "Tap to cycle pure RGB colors (${colorIndex + 1}/${colors.size})\nCheck for dead pixels & uniformity",
-                    color = Color.White,
-                    style = MaterialTheme.typography.bodySmall,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(12.dp)
-                )
+                Column(
+                    modifier = Modifier.padding(14.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = desc,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Tap screen to cycle color (${colorIndex + 1}/${colors.size})",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.White.copy(alpha = 0.8f)
+                    )
+                }
             }
         }
     }
 }
 
-// 2. Touchscreen Test
+// 2. Touchscreen & Digitizer Calibration Grid
 @Composable
-private fun TouchscreenTestCanvas() {
-    val touchPoints = remember { mutableStateListOf<Offset>() }
+private fun TouchscreenCalibrationGrid() {
+    val numCols = 6
+    val numRows = 8
+    val totalCells = numCols * numRows
+    val touchedCells = remember { mutableStateMapOf<Int, Boolean>() }
+    var touchCount by remember { mutableIntStateOf(0) }
+    var lastTouchPos by remember { mutableStateOf<Offset?>(null) }
+
+    val touchedCount = touchedCells.size
+    val coveragePct = (touchedCount.toFloat() / totalCells * 100).toInt()
 
     Column(
         modifier = Modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(
-            text = "Draw or swipe across the grid to verify touch digitizer",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Spacer(modifier = Modifier.height(10.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Coverage: $coveragePct% ($touchedCount / $totalCells cells)",
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold,
+                color = if (coveragePct >= 75) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+            )
 
-        Box(
+            TextButton(
+                onClick = {
+                    touchedCells.clear()
+                    touchCount = 0
+                    lastTouchPos = null
+                },
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+            ) {
+                Text("Clear Grid", style = MaterialTheme.typography.labelSmall)
+            }
+        }
+
+        Spacer(modifier = Modifier.height(6.dp))
+
+        BoxWithConstraints(
             modifier = Modifier
-                .fillMaxSize()
-                .clip(RoundedCornerShape(16.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+                .fillMaxWidth()
+                .weight(1f)
+                .clip(RoundedCornerShape(14.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
                 .pointerInput(Unit) {
-                    detectDragGestures { change, _ ->
-                        touchPoints.add(change.position)
-                    }
+                    detectDragGestures(
+                        onDragStart = { offset ->
+                            lastTouchPos = offset
+                            touchCount++
+                            val col = (offset.x / (size.width / numCols)).toInt().coerceIn(0, numCols - 1)
+                            val row = (offset.y / (size.height / numRows)).toInt().coerceIn(0, numRows - 1)
+                            touchedCells[row * numCols + col] = true
+                        },
+                        onDrag = { change, _ ->
+                            lastTouchPos = change.position
+                            val col = (change.position.x / (size.width / numCols)).toInt().coerceIn(0, numCols - 1)
+                            val row = (change.position.y / (size.height / numRows)).toInt().coerceIn(0, numRows - 1)
+                            touchedCells[row * numCols + col] = true
+                        }
+                    )
                 }
         ) {
-            val strokeColor = MaterialTheme.colorScheme.primary
+            val cellW = maxWidth / numCols
+            val cellH = maxHeight / numRows
+            val primaryColor = MaterialTheme.colorScheme.primary
+            val gridBorder = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+
             Canvas(modifier = Modifier.fillMaxSize()) {
-                for (i in 0 until touchPoints.size - 1) {
-                    drawLine(
-                        color = strokeColor,
-                        start = touchPoints[i],
-                        end = touchPoints[i + 1],
-                        strokeWidth = 6.dp.toPx()
+                val w = size.width
+                val h = size.height
+                val cW = w / numCols
+                val cH = h / numRows
+
+                for (r in 0 until numRows) {
+                    for (c in 0 until numCols) {
+                        val idx = r * numCols + c
+                        val isTouched = touchedCells[idx] == true
+                        val left = c * cW
+                        val top = r * cH
+
+                        if (isTouched) {
+                            drawRect(
+                                color = primaryColor.copy(alpha = 0.45f),
+                                topLeft = Offset(left, top),
+                                size = Size(cW, cH)
+                            )
+                        }
+
+                        drawRect(
+                            color = gridBorder,
+                            topLeft = Offset(left, top),
+                            size = Size(cW, cH),
+                            style = Stroke(width = 1f)
+                        )
+                    }
+                }
+
+                lastTouchPos?.let { pos ->
+                    drawCircle(
+                        color = primaryColor,
+                        radius = 24f,
+                        center = pos
                     )
                 }
             }
 
-            if (touchPoints.isEmpty()) {
+            if (touchedCells.isEmpty()) {
                 Text(
-                    text = "Swipe here with your finger! 👆",
-                    style = MaterialTheme.typography.titleMedium,
+                    text = "Slide your finger across all grid blocks! 👆",
+                    style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.align(Alignment.Center),
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
+
+        Spacer(modifier = Modifier.height(4.dp))
+        if (coveragePct >= 70) {
+            Surface(
+                shape = RoundedCornerShape(8.dp),
+                color = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+            ) {
+                Text(
+                    text = "✓ Touch Response Verified ($coveragePct%)! Ready to Pass.",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                )
+            }
+        } else {
+            Text(
+                text = lastTouchPos?.let { "Coordinate: (${it.x.toInt()}px, ${it.y.toInt()}px)" } ?: "Touch anywhere to test digitizer",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }
 
-// 3 & 4. Speaker & Earpiece Test
+// 3 & 4. Speaker & Earpiece Audio Tone Test
 @Composable
 private fun SpeakerToneTest(viewModel: FoxyViewModel, isEarpiece: Boolean) {
     val coroutineScope = rememberCoroutineScope()
     var isPlaying by remember { mutableStateOf(false) }
+    var selectedFreq by remember { mutableIntStateOf(if (isEarpiece) 600 else 440) }
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        verticalArrangement = Arrangement.Center,
+        modifier = Modifier.fillMaxSize()
     ) {
-        Icon(
-            imageVector = if (isEarpiece) Icons.Default.PhoneInTalk else Icons.Default.VolumeUp,
-            contentDescription = "Speaker",
-            modifier = Modifier.size(64.dp),
-            tint = MaterialTheme.colorScheme.primary
-        )
-        Spacer(modifier = Modifier.height(16.dp))
+        Box(
+            modifier = Modifier
+                .size(72.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = if (isEarpiece) Icons.Default.PhoneInTalk else Icons.Default.VolumeUp,
+                contentDescription = "Speaker",
+                modifier = Modifier.size(38.dp),
+                tint = MaterialTheme.colorScheme.primary
+            )
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
         Text(
-            text = if (isEarpiece) "Call Receiver Earpiece Test" else "Main Loudspeaker Test",
+            text = if (isEarpiece) "Front Call Earpiece Test" else "Main Loudspeaker Test",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurface
         )
-        Spacer(modifier = Modifier.height(8.dp))
+
+        Spacer(modifier = Modifier.height(6.dp))
+
         Text(
-            text = if (isEarpiece) "Hold earpiece to ear and tap play tone" else "Listen for clear 440 Hz acoustic sine wave",
-            style = MaterialTheme.typography.bodyMedium,
+            text = if (isEarpiece) "Hold front earpiece to ear and test voice audio channel" else "Listen for clear harmonic acoustic sine wave",
+            style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
         )
-        Spacer(modifier = Modifier.height(20.dp))
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        // Frequency Selector
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf(220 to "Low (220Hz)", 440 to "Standard (440Hz)", 880 to "High (880Hz)").forEach { (freq, label) ->
+                FilterChip(
+                    selected = selectedFreq == freq,
+                    onClick = { selectedFreq = freq },
+                    label = { Text(label) },
+                    shape = RoundedCornerShape(8.dp)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(18.dp))
 
         Button(
             onClick = {
                 coroutineScope.launch {
                     isPlaying = true
-                    viewModel.playAudioTone(frequency = if (isEarpiece) 600 else 440, durationMs = 1200, isEarpiece = isEarpiece)
+                    viewModel.playAudioTone(frequency = selectedFreq, durationMs = 1200, isEarpiece = isEarpiece)
                     isPlaying = false
                 }
             },
             enabled = !isPlaying,
-            shape = RoundedCornerShape(14.dp)
+            shape = RoundedCornerShape(12.dp)
         ) {
-            Icon(Icons.Default.PlayArrow, contentDescription = "Play")
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(if (isPlaying) "Playing Tone..." else "Play Test Tone")
+            Icon(Icons.Default.PlayArrow, contentDescription = "Play", modifier = Modifier.size(18.dp))
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(if (isPlaying) "Playing $selectedFreq Hz..." else "Play Tone")
         }
     }
 }
 
-// 5. Microphone Decibel Test
+// 5. Authentic Real Microphone Decibel Sampler
 @Composable
-private fun MicrophoneDecibelTest() {
-    var decibel by remember { mutableFloatStateOf(45f) }
+private fun MicrophoneDecibelTest(viewModel: FoxyViewModel) {
+    val context = LocalContext.current
+    var decibel by remember { mutableFloatStateOf(35f) }
+    var hasPermission by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+        )
+    }
 
-    LaunchedEffect(Unit) {
-        while (true) {
-            // Animate realistic ambient voice decibel meter
-            decibel = 38f + (kotlin.random.Random.nextFloat() * 32f)
-            delay(200)
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        hasPermission = isGranted
+    }
+
+    DisposableEffect(hasPermission) {
+        if (!hasPermission) {
+            onDispose { }
+        } else {
+            val listener = viewModel.startMicrophoneListener { db ->
+                decibel = db
+            }
+            onDispose {
+                try {
+                    listener?.close()
+                } catch (_: Exception) {}
+            }
         }
     }
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        verticalArrangement = Arrangement.Center,
+        modifier = Modifier.fillMaxSize()
     ) {
-        Icon(
-            imageVector = Icons.Default.Mic,
-            contentDescription = "Mic",
-            modifier = Modifier.size(64.dp),
-            tint = MaterialTheme.colorScheme.primary
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-        Text(
-            text = "Speak into device microphone",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            text = "${decibel.toInt()} dB (Live Sound Level)",
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-        LinearProgressIndicator(
-            progress = { (decibel / 100f).coerceIn(0f, 1f) },
+        Box(
             modifier = Modifier
-                .fillMaxWidth(0.8f)
-                .height(12.dp)
-                .clip(RoundedCornerShape(6.dp))
-        )
+                .size(72.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.Mic,
+                contentDescription = "Mic",
+                modifier = Modifier.size(38.dp),
+                tint = MaterialTheme.colorScheme.primary
+            )
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        if (!hasPermission) {
+            Text(
+                text = "Microphone Permission Required",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = "Grant audio recording permission to measure live microphone acoustics",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = Modifier.height(14.dp))
+            Button(
+                onClick = { launcher.launch(Manifest.permission.RECORD_AUDIO) },
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text("Grant Microphone Access")
+            }
+        } else {
+            Text(
+                text = "Speak into microphone",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = "${decibel.toInt()} dB SPL",
+                style = MaterialTheme.typography.headlineLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = when {
+                    decibel < 45 -> "Quiet Ambient Noise"
+                    decibel < 65 -> "Normal Speech Detected ✓"
+                    decibel < 80 -> "Loud Voice Detected ✓"
+                    else -> "High Sound Pressure Level"
+                },
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            LinearProgressIndicator(
+                progress = { ((decibel - 30f) / 70f).coerceIn(0f, 1f) },
+                modifier = Modifier
+                    .fillMaxWidth(0.75f)
+                    .height(10.dp)
+                    .clip(RoundedCornerShape(5.dp)),
+                color = if (decibel >= 55f) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary
+            )
+        }
     }
 }
 
-// 6. Vibration Test
+// 6. Vibration Interactive Test with Patterns
 @Composable
 private fun VibrationInteractiveTest(viewModel: FoxyViewModel) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        verticalArrangement = Arrangement.Center,
+        modifier = Modifier.fillMaxSize()
     ) {
-        Icon(
-            imageVector = Icons.Default.Vibration,
-            contentDescription = "Vibration",
-            modifier = Modifier.size(64.dp),
-            tint = MaterialTheme.colorScheme.primary
-        )
-        Spacer(modifier = Modifier.height(16.dp))
+        Box(
+            modifier = Modifier
+                .size(72.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.Vibration,
+                contentDescription = "Vibration",
+                modifier = Modifier.size(38.dp),
+                tint = MaterialTheme.colorScheme.primary
+            )
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
         Text(
-            text = "Test Haptic Motor",
+            text = "Haptic Vibration Motor",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurface
         )
-        Spacer(modifier = Modifier.height(8.dp))
+
+        Spacer(modifier = Modifier.height(6.dp))
+
         Text(
-            text = "Tap below to trigger vibration sequence",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            text = "Tap to trigger tactile haptic vibration patterns",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center
         )
-        Spacer(modifier = Modifier.height(20.dp))
+
+        Spacer(modifier = Modifier.height(18.dp))
+
         Button(
             onClick = { viewModel.triggerVibration() },
-            shape = RoundedCornerShape(14.dp)
+            shape = RoundedCornerShape(12.dp)
         ) {
-            Icon(Icons.Default.Bolt, contentDescription = "Vibrate")
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Vibrate Now")
+            Icon(Icons.Default.Bolt, contentDescription = "Vibrate", modifier = Modifier.size(18.dp))
+            Spacer(modifier = Modifier.width(6.dp))
+            Text("Trigger Vibration Pulse")
         }
     }
 }
 
-// 7. Flashlight Test
+// 7. Flashlight / LED Torch Test
 @Composable
 private fun FlashlightInteractiveTest(viewModel: FoxyViewModel) {
     var isOn by remember { mutableStateOf(false) }
@@ -680,42 +1032,57 @@ private fun FlashlightInteractiveTest(viewModel: FoxyViewModel) {
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        verticalArrangement = Arrangement.Center,
+        modifier = Modifier.fillMaxSize()
     ) {
-        Icon(
-            imageVector = Icons.Default.FlashlightOn,
-            contentDescription = "Torch",
-            modifier = Modifier.size(64.dp),
-            tint = if (isOn) Color(0xFFFFB300) else MaterialTheme.colorScheme.primary
-        )
-        Spacer(modifier = Modifier.height(16.dp))
+        Box(
+            modifier = Modifier
+                .size(72.dp)
+                .clip(CircleShape)
+                .background(if (isOn) Color(0xFFFFB300).copy(alpha = 0.25f) else MaterialTheme.colorScheme.surfaceVariant),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.FlashlightOn,
+                contentDescription = "Torch",
+                modifier = Modifier.size(38.dp),
+                tint = if (isOn) Color(0xFFFFB300) else MaterialTheme.colorScheme.outline
+            )
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
         Text(
             text = "Camera LED Flashlight",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurface
         )
-        Spacer(modifier = Modifier.height(8.dp))
+
+        Spacer(modifier = Modifier.height(6.dp))
+
         Text(
-            text = if (isOn) "Flashlight is ON" else "Flashlight is OFF",
-            style = MaterialTheme.typography.bodyMedium,
+            text = if (isOn) "Torch is active • Tap to turn off" else "Tap below to turn rear LED flash on",
+            style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
-        Spacer(modifier = Modifier.height(20.dp))
+
+        Spacer(modifier = Modifier.height(18.dp))
+
         FilledTonalButton(
             onClick = {
                 val newState = !isOn
                 isOn = newState
                 viewModel.toggleTorch(newState)
             },
-            shape = RoundedCornerShape(14.dp)
+            shape = RoundedCornerShape(12.dp)
         ) {
-            Text(if (isOn) "Turn OFF" else "Turn ON")
+            Text(if (isOn) "Turn Torch OFF" else "Turn Torch ON")
         }
     }
 }
 
-// 8. Proximity Test
+// 8. Real Proximity Sensor Test
 @Composable
 private fun ProximityInteractiveTest(context: Context) {
     val sm = remember { context.getSystemService(Context.SENSOR_SERVICE) as? SensorManager }
@@ -745,29 +1112,44 @@ private fun ProximityInteractiveTest(context: Context) {
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        verticalArrangement = Arrangement.Center,
+        modifier = Modifier.fillMaxSize()
     ) {
-        Icon(
-            imageVector = if (isNear) Icons.Default.Sensors else Icons.Default.SensorsOff,
-            contentDescription = "Proximity",
-            modifier = Modifier.size(64.dp),
-            tint = if (isNear) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
-        )
-        Spacer(modifier = Modifier.height(16.dp))
+        Box(
+            modifier = Modifier
+                .size(72.dp)
+                .clip(CircleShape)
+                .background(if (isNear) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = if (isNear) Icons.Default.Sensors else Icons.Default.SensorsOff,
+                contentDescription = "Proximity",
+                modifier = Modifier.size(38.dp),
+                tint = if (isNear) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
+            )
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
         Text(
-            text = if (isNear) "NEAR (Obstruction detected!) ✋" else "FAR (Clear) 🖐️",
+            text = if (isNear) "NEAR (Covered) ✋" else "FAR (Clear) 🖐️",
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
             color = if (isNear) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
         )
-        Spacer(modifier = Modifier.height(8.dp))
+
+        Spacer(modifier = Modifier.height(6.dp))
+
         Text(
-            text = "Cover the top bezel near selfie camera with your hand",
-            style = MaterialTheme.typography.bodyMedium,
+            text = "Cover upper bezel near speaker with palm to test",
+            style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
         )
+
         Spacer(modifier = Modifier.height(8.dp))
+
         Text(
             text = "Distance readout: $distance cm",
             style = MaterialTheme.typography.labelMedium,
@@ -776,12 +1158,12 @@ private fun ProximityInteractiveTest(context: Context) {
     }
 }
 
-// 9. Light Sensor Test
+// 9. Real Ambient Light Sensor Test
 @Composable
 private fun LightSensorInteractiveTest(context: Context) {
     val sm = remember { context.getSystemService(Context.SENSOR_SERVICE) as? SensorManager }
     val lightSensor = remember { sm?.getDefaultSensor(Sensor.TYPE_LIGHT) }
-    var lux by remember { mutableFloatStateOf(120f) }
+    var lux by remember { mutableFloatStateOf(100f) }
 
     DisposableEffect(Unit) {
         val listener = object : SensorEventListener {
@@ -802,45 +1184,59 @@ private fun LightSensorInteractiveTest(context: Context) {
 
     val condition = when {
         lux < 10 -> "Dark / Night"
-        lux < 150 -> "Dim Indoor"
+        lux < 150 -> "Dim Indoor Room"
         lux < 500 -> "Bright Room"
-        lux < 2000 -> "Daylight"
+        lux < 2500 -> "Daylight / Office"
         else -> "Bright Sunlight"
     }
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        verticalArrangement = Arrangement.Center,
+        modifier = Modifier.fillMaxSize()
     ) {
-        Icon(
-            imageVector = Icons.Default.LightMode,
-            contentDescription = "Light",
-            modifier = Modifier.size(64.dp),
-            tint = Color(0xFFFFB300)
-        )
-        Spacer(modifier = Modifier.height(16.dp))
+        Box(
+            modifier = Modifier
+                .size(72.dp)
+                .clip(CircleShape)
+                .background(Color(0xFFFFB300).copy(alpha = 0.2f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.LightMode,
+                contentDescription = "Light",
+                modifier = Modifier.size(38.dp),
+                tint = Color(0xFFFFB300)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
         Text(
             text = "${lux.toInt()} Lux",
-            style = MaterialTheme.typography.displaySmall,
+            style = MaterialTheme.typography.headlineLarge,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurface
         )
-        Spacer(modifier = Modifier.height(4.dp))
+
         Text(
             text = condition,
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.primary
         )
-        Spacer(modifier = Modifier.height(8.dp))
+
+        Spacer(modifier = Modifier.height(6.dp))
+
         Text(
-            text = "Shine light on device or cover sensor to test response",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            text = "Shine light on screen or cover sensor to test dynamic response",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center
         )
     }
 }
 
-// 10. Accelerometer Level Test
+// 10. Real Accelerometer 2D Bubble Spirit Level Test
 @Composable
 private fun AccelerometerLevelTest(context: Context) {
     val sm = remember { context.getSystemService(Context.SENSOR_SERVICE) as? SensorManager }
@@ -868,50 +1264,62 @@ private fun AccelerometerLevelTest(context: Context) {
         }
     }
 
+    val isLevel = abs(xVal) < 1.0f && abs(yVal) < 1.0f
+
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        verticalArrangement = Arrangement.Center,
+        modifier = Modifier.fillMaxSize()
     ) {
-        // Visual Bubble Level
+        // 2D Spirit Level Canvas
         Box(
             modifier = Modifier
-                .size(160.dp)
+                .size(150.dp)
                 .clip(CircleShape)
-                .border(2.dp, MaterialTheme.colorScheme.primary, CircleShape)
-                .background(MaterialTheme.colorScheme.surfaceVariant),
+                .border(2.dp, if (isLevel) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline, CircleShape)
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
             contentAlignment = Alignment.Center
         ) {
-            // Center crosshair
-            Box(modifier = Modifier.size(16.dp).border(1.dp, MaterialTheme.colorScheme.outline, CircleShape))
+            // Target Center Crosshair
+            Box(
+                modifier = Modifier
+                    .size(24.dp)
+                    .border(1.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.6f), CircleShape)
+            )
 
-            // Bubble
-            val offsetX = (-xVal * 6).coerceIn(-60f, 60f)
-            val offsetY = (yVal * 6).coerceIn(-60f, 60f)
+            // Dynamic Level Bubble
+            val offsetX = (-xVal * 6.5f).coerceIn(-50f, 50f)
+            val offsetY = (yVal * 6.5f).coerceIn(-50f, 50f)
+
             Box(
                 modifier = Modifier
                     .offset(x = offsetX.dp, y = offsetY.dp)
-                    .size(24.dp)
+                    .size(28.dp)
                     .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primary)
+                    .background(if (isLevel) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary)
             )
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(14.dp))
+
         Text(
-            text = "X: ${String.format("%.1f", xVal)} | Y: ${String.format("%.1f", yVal)} | Z: ${String.format("%.1f", zVal)}",
+            text = if (isLevel) "Level (0.0° Balanced) ✓" else "Tilt Device",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface
+            color = if (isLevel) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
         )
+
+        Spacer(modifier = Modifier.height(4.dp))
+
         Text(
-            text = "Tilt device to check 3-axis motion level",
+            text = "X: ${String.format("%.1f", xVal)} m/s² | Y: ${String.format("%.1f", yVal)} m/s² | Z: ${String.format("%.1f", zVal)} m/s²",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }
 
-// 11. Gyroscope Test
+// 11. Real Gyroscope Rotational Angular Velocity Test
 @Composable
 private fun GyroscopeInteractiveTest(context: Context) {
     val sm = remember { context.getSystemService(Context.SENSOR_SERVICE) as? SensorManager }
@@ -941,52 +1349,118 @@ private fun GyroscopeInteractiveTest(context: Context) {
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        verticalArrangement = Arrangement.Center,
+        modifier = Modifier.fillMaxSize()
     ) {
-        Icon(
-            imageVector = Icons.Default.RotateRight,
-            contentDescription = "Gyro",
-            modifier = Modifier.size(64.dp),
-            tint = MaterialTheme.colorScheme.secondary
-        )
-        Spacer(modifier = Modifier.height(16.dp))
+        Box(
+            modifier = Modifier
+                .size(72.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.RotateRight,
+                contentDescription = "Gyro",
+                modifier = Modifier.size(38.dp),
+                tint = MaterialTheme.colorScheme.primary
+            )
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
         Text(
-            text = "Rotational Velocity",
+            text = "3-Axis Angular Velocity",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurface
         )
+
         Spacer(modifier = Modifier.height(8.dp))
+
         Text(
-            text = "Yaw (Z): ${String.format("%.2f", rz)} rad/s\nPitch (X): ${String.format("%.2f", rx)} rad/s\nRoll (Y): ${String.format("%.2f", ry)} rad/s",
-            style = MaterialTheme.typography.bodyLarge,
+            text = "Pitch (X): ${String.format("%.2f", rx)} rad/s\nRoll (Y): ${String.format("%.2f", ry)} rad/s\nYaw (Z): ${String.format("%.2f", rz)} rad/s",
+            style = MaterialTheme.typography.bodyMedium,
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onSurface
         )
-        Spacer(modifier = Modifier.height(8.dp))
+
+        Spacer(modifier = Modifier.height(6.dp))
+
         Text(
-            text = "Rotate or spin device in hand",
-            style = MaterialTheme.typography.bodyMedium,
+            text = "Spin or rotate device to observe angular gyro rates",
+            style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }
 
-// 12. Compass Test
+// 12. Real Digital Compass & Magnetometer Test
 @Composable
 private fun CompassInteractiveTest(context: Context) {
     val sm = remember { context.getSystemService(Context.SENSOR_SERVICE) as? SensorManager }
-    val mag = remember { sm?.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD) }
-    var heading by remember { mutableIntStateOf(180) }
+    val rotSensor = remember { sm?.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR) }
+    val magSensor = remember { sm?.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD) }
+    val accelSensor = remember { sm?.getDefaultSensor(Sensor.TYPE_ACCELEROMETER) }
 
-    LaunchedEffect(Unit) {
-        while (true) {
-            heading = (heading + 3) % 360
-            delay(100)
+    var azimuthDegrees by remember { mutableFloatStateOf(0f) }
+    var magStrength by remember { mutableFloatStateOf(45f) }
+
+    DisposableEffect(Unit) {
+        val rMatrix = FloatArray(9)
+        val orientation = FloatArray(3)
+        var lastAccel = FloatArray(3)
+        var lastMag = FloatArray(3)
+        var hasAccel = false
+        var hasMag = false
+
+        val listener = object : SensorEventListener {
+            override fun onSensorChanged(event: SensorEvent?) {
+                if (event == null) return
+                if (event.sensor.type == Sensor.TYPE_ROTATION_VECTOR) {
+                    SensorManager.getRotationMatrixFromVector(rMatrix, event.values)
+                    SensorManager.getOrientation(rMatrix, orientation)
+                    val az = Math.toDegrees(orientation[0].toDouble()).toFloat()
+                    azimuthDegrees = (az + 360f) % 360f
+                } else if (event.sensor.type == Sensor.TYPE_MAGNETIC_FIELD) {
+                    lastMag = event.values.clone()
+                    hasMag = true
+                    magStrength = Math.sqrt(
+                        (lastMag[0] * lastMag[0] + lastMag[1] * lastMag[1] + lastMag[2] * lastMag[2]).toDouble()
+                    ).toFloat()
+                    if (hasAccel && rotSensor == null) {
+                        if (SensorManager.getRotationMatrix(rMatrix, null, lastAccel, lastMag)) {
+                            SensorManager.getOrientation(rMatrix, orientation)
+                            val az = Math.toDegrees(orientation[0].toDouble()).toFloat()
+                            azimuthDegrees = (az + 360f) % 360f
+                        }
+                    }
+                } else if (event.sensor.type == Sensor.TYPE_ACCELEROMETER) {
+                    lastAccel = event.values.clone()
+                    hasAccel = true
+                }
+            }
+
+            override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
+        }
+
+        if (rotSensor != null) {
+            sm?.registerListener(listener, rotSensor, SensorManager.SENSOR_DELAY_UI)
+        }
+        if (magSensor != null) {
+            sm?.registerListener(listener, magSensor, SensorManager.SENSOR_DELAY_UI)
+        }
+        if (accelSensor != null) {
+            sm?.registerListener(listener, accelSensor, SensorManager.SENSOR_DELAY_UI)
+        }
+
+        onDispose {
+            sm?.unregisterListener(listener)
         }
     }
 
-    val direction = when (heading) {
+    val headingInt = azimuthDegrees.toInt()
+    val direction = when (headingInt) {
         in 338..360, in 0..22 -> "North (N)"
         in 23..67 -> "North-East (NE)"
         in 68..112 -> "East (E)"
@@ -999,231 +1473,434 @@ private fun CompassInteractiveTest(context: Context) {
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        verticalArrangement = Arrangement.Center,
+        modifier = Modifier.fillMaxSize()
     ) {
-        Icon(
-            imageVector = Icons.Default.Explore,
-            contentDescription = "Compass",
-            modifier = Modifier.size(64.dp),
-            tint = MaterialTheme.colorScheme.primary
-        )
-        Spacer(modifier = Modifier.height(16.dp))
+        // Rotating Compass Dial
+        Box(
+            modifier = Modifier
+                .size(140.dp)
+                .clip(CircleShape)
+                .border(2.dp, MaterialTheme.colorScheme.primary, CircleShape)
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
+            contentAlignment = Alignment.Center
+        ) {
+            // Rotating Needle
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .rotate(-azimuthDegrees)
+            ) {
+                // North Arrow (Red)
+                Canvas(modifier = Modifier.fillMaxSize()) {
+                    val cx = size.width / 2
+                    val cy = size.height / 2
+                    val pathNorth = Path().apply {
+                        moveTo(cx, 16f)
+                        lineTo(cx - 10f, cy)
+                        lineTo(cx + 10f, cy)
+                        close()
+                    }
+                    drawPath(pathNorth, color = Color(0xFFFF5252))
+
+                    // South Arrow (White/M3)
+                    val pathSouth = Path().apply {
+                        moveTo(cx, size.height - 16f)
+                        lineTo(cx - 10f, cy)
+                        lineTo(cx + 10f, cy)
+                        close()
+                    }
+                    drawPath(pathSouth, color = Color.LightGray)
+
+                    drawCircle(color = Color.White, radius = 6f, center = Offset(cx, cy))
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
         Text(
-            text = "$heading°",
-            style = MaterialTheme.typography.displaySmall,
+            text = "$headingInt° $direction",
+            style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-        Text(
-            text = direction,
-            style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.primary
+        )
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        Text(
+            text = "Magnetic Field: ${magStrength.toInt()} µT",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }
 
-// 13. Fingerprint Test
+// 13. Biometrics / Fingerprint Hardware Test
 @Composable
 private fun FingerprintInteractiveTest(context: Context) {
     val pm = context.packageManager
-    val hasFingerprint = pm.hasSystemFeature(android.content.pm.PackageManager.FEATURE_FINGERPRINT)
+    val hasFingerprint = pm.hasSystemFeature(PackageManager.FEATURE_FINGERPRINT)
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        verticalArrangement = Arrangement.Center,
+        modifier = Modifier.fillMaxSize()
     ) {
-        Icon(
-            imageVector = Icons.Default.Fingerprint,
-            contentDescription = "Fingerprint",
-            modifier = Modifier.size(64.dp),
-            tint = if (hasFingerprint) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
-        )
-        Spacer(modifier = Modifier.height(16.dp))
+        Box(
+            modifier = Modifier
+                .size(72.dp)
+                .clip(CircleShape)
+                .background(if (hasFingerprint) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.Fingerprint,
+                contentDescription = "Fingerprint",
+                modifier = Modifier.size(38.dp),
+                tint = if (hasFingerprint) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
+            )
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
         Text(
             text = if (hasFingerprint) "Biometric Hardware Ready" else "No Hardware Sensor",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurface
         )
-        Spacer(modifier = Modifier.height(8.dp))
+
+        Spacer(modifier = Modifier.height(6.dp))
+
         Text(
-            text = if (hasFingerprint) "Biometric HAL and fingerprint reader confirmed present" else "This device does not have a fingerprint reader",
-            style = MaterialTheme.typography.bodyMedium,
+            text = if (hasFingerprint) "Hardware Biometric Reader confirmed on system bus" else "This device does not have a fingerprint reader",
+            style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
         )
     }
 }
 
-// 14. Volume Buttons Test
+// 14. Physical & Virtual Volume Buttons Test
 @Composable
-private fun VolumeButtonsInteractiveTest() {
-    var volUpPressed by remember { mutableStateOf(false) }
-    var volDownPressed by remember { mutableStateOf(false) }
-
+private fun VolumeButtonsInteractiveTest(
+    volUpPressed: Boolean,
+    volDownPressed: Boolean,
+    onVolUpClick: () -> Unit,
+    onVolDownClick: () -> Unit
+) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        verticalArrangement = Arrangement.Center,
+        modifier = Modifier.fillMaxSize()
     ) {
-        Icon(
-            imageVector = Icons.Default.VolumeDown,
-            contentDescription = "Keys",
-            modifier = Modifier.size(64.dp),
-            tint = MaterialTheme.colorScheme.primary
-        )
-        Spacer(modifier = Modifier.height(16.dp))
+        Box(
+            modifier = Modifier
+                .size(72.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.VolumeDown,
+                contentDescription = "Keys",
+                modifier = Modifier.size(38.dp),
+                tint = MaterialTheme.colorScheme.primary
+            )
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
         Text(
             text = "Physical Volume Keys",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurface
         )
-        Spacer(modifier = Modifier.height(12.dp))
 
-        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+        Spacer(modifier = Modifier.height(6.dp))
+
+        Text(
+            text = "Press physical volume buttons on device or tap chips below",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             Button(
-                onClick = { volUpPressed = true },
+                onClick = onVolUpClick,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = if (volUpPressed) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
-                    contentColor = if (volUpPressed) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                    containerColor = if (volUpPressed) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+                    contentColor = if (volUpPressed) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+                ),
+                shape = RoundedCornerShape(12.dp)
             ) {
-                Text(if (volUpPressed) "Vol Up ✓" else "Tap Vol Up")
+                Icon(if (volUpPressed) Icons.Default.Check else Icons.Default.VolumeUp, contentDescription = "Vol Up", modifier = Modifier.size(16.dp))
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(if (volUpPressed) "Volume UP ✓" else "Press Vol UP")
             }
+
             Button(
-                onClick = { volDownPressed = true },
+                onClick = onVolDownClick,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = if (volDownPressed) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
-                    contentColor = if (volDownPressed) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                    containerColor = if (volDownPressed) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+                    contentColor = if (volDownPressed) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+                ),
+                shape = RoundedCornerShape(12.dp)
             ) {
-                Text(if (volDownPressed) "Vol Down ✓" else "Tap Vol Down")
+                Icon(if (volDownPressed) Icons.Default.Check else Icons.Default.VolumeDown, contentDescription = "Vol Down", modifier = Modifier.size(16.dp))
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(if (volDownPressed) "Volume DOWN ✓" else "Press Vol DOWN")
+            }
+        }
+
+        if (volUpPressed && volDownPressed) {
+            Spacer(modifier = Modifier.height(16.dp))
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Default.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Both Volume Keys Verified! Tap 'Mark Passed' below.", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                }
             }
         }
     }
 }
 
-// 15. Bluetooth Test
+// 15. Bluetooth Radio & BLE Test
 @Composable
 private fun BluetoothCheckTest(context: Context) {
     val pm = context.packageManager
-    val hasBt = pm.hasSystemFeature(android.content.pm.PackageManager.FEATURE_BLUETOOTH)
-    val hasBle = pm.hasSystemFeature(android.content.pm.PackageManager.FEATURE_BLUETOOTH_LE)
+    val hasBt = pm.hasSystemFeature(PackageManager.FEATURE_BLUETOOTH)
+    val hasBle = pm.hasSystemFeature(PackageManager.FEATURE_BLUETOOTH_LE)
+
+    val btAdapter = remember {
+        try {
+            BluetoothAdapter.getDefaultAdapter()
+        } catch (_: Exception) {
+            null
+        }
+    }
+    val isEnabled = btAdapter?.isEnabled == true
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        verticalArrangement = Arrangement.Center,
+        modifier = Modifier.fillMaxSize()
     ) {
-        Icon(
-            imageVector = Icons.Default.Bluetooth,
-            contentDescription = "Bluetooth",
-            modifier = Modifier.size(64.dp),
-            tint = MaterialTheme.colorScheme.primary
-        )
-        Spacer(modifier = Modifier.height(16.dp))
+        Box(
+            modifier = Modifier
+                .size(72.dp)
+                .clip(CircleShape)
+                .background(if (hasBt) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.Bluetooth,
+                contentDescription = "Bluetooth",
+                modifier = Modifier.size(38.dp),
+                tint = if (hasBt) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
+            )
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
         Text(
-            text = if (hasBt) "Bluetooth Supported" else "Bluetooth Not Available",
+            text = if (hasBt) "Bluetooth Hardware Supported" else "Bluetooth Not Available",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurface
         )
+
         Spacer(modifier = Modifier.height(8.dp))
+
         Text(
-            text = "Classic Bluetooth: ${if (hasBt) "Yes" else "No"}\nBluetooth Low Energy (BLE): ${if (hasBle) "Yes" else "No"}",
+            text = "Radio State: ${if (isEnabled) "Active / ON" else "Ready / Standby"}\nBluetooth Low Energy (BLE): ${if (hasBle) "Supported ✓" else "No"}",
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
         )
     }
 }
 
-// 16. Charging Test
+// 16. Dynamic Real-Time Charging & Cable Detection
 @Composable
-private fun ChargingCheckTest(viewModel: FoxyViewModel) {
-    val isCharging = viewModel.checkCharging()
+private fun ChargingCheckTest(context: Context) {
+    var isCharging by remember { mutableStateOf(false) }
+    var plugType by remember { mutableStateOf("Battery") }
+    var batteryPct by remember { mutableIntStateOf(100) }
+
+    DisposableEffect(Unit) {
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(c: Context?, intent: Intent?) {
+                if (intent?.action == Intent.ACTION_BATTERY_CHANGED) {
+                    val status = intent.getIntExtra(BatteryManager.EXTRA_STATUS, -1)
+                    isCharging = status == BatteryManager.BATTERY_STATUS_CHARGING || status == BatteryManager.BATTERY_STATUS_FULL
+                    val plugged = intent.getIntExtra(BatteryManager.EXTRA_PLUGGED, -1)
+                    plugType = when (plugged) {
+                        BatteryManager.BATTERY_PLUGGED_AC -> "AC Fast Charger ⚡"
+                        BatteryManager.BATTERY_PLUGGED_USB -> "USB Cable Port 🔌"
+                        BatteryManager.BATTERY_PLUGGED_WIRELESS -> "Wireless Induction Base 🛜"
+                        else -> "Unplugged"
+                    }
+                    val level = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1)
+                    val scale = intent.getIntExtra(BatteryManager.EXTRA_SCALE, -1)
+                    if (scale > 0) batteryPct = (level * 100) / scale
+                }
+            }
+        }
+        val filter = IntentFilter(Intent.ACTION_BATTERY_CHANGED)
+        val initial = context.registerReceiver(receiver, filter)
+        initial?.let { intent ->
+            val status = intent.getIntExtra(BatteryManager.EXTRA_STATUS, -1)
+            isCharging = status == BatteryManager.BATTERY_STATUS_CHARGING || status == BatteryManager.BATTERY_STATUS_FULL
+        }
+
+        onDispose {
+            try {
+                context.unregisterReceiver(receiver)
+            } catch (_: Exception) {}
+        }
+    }
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        verticalArrangement = Arrangement.Center,
+        modifier = Modifier.fillMaxSize()
     ) {
-        Icon(
-            imageVector = Icons.Default.BatteryChargingFull,
-            contentDescription = "Charging",
-            modifier = Modifier.size(64.dp),
-            tint = if (isCharging) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
-        )
-        Spacer(modifier = Modifier.height(16.dp))
+        Box(
+            modifier = Modifier
+                .size(72.dp)
+                .clip(CircleShape)
+                .background(if (isCharging) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.BatteryChargingFull,
+                contentDescription = "Charging",
+                modifier = Modifier.size(38.dp),
+                tint = if (isCharging) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
+            )
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
         Text(
             text = if (isCharging) "Charger Connected! ⚡" else "On Battery (Unplugged)",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface
+            color = if (isCharging) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
         )
-        Spacer(modifier = Modifier.height(8.dp))
+
+        Spacer(modifier = Modifier.height(6.dp))
+
         Text(
-            text = "Plug in USB-C cable or wireless charger to test port power detection",
+            text = "Status: $plugType • Battery Level: $batteryPct%",
             style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        Spacer(modifier = Modifier.height(6.dp))
+
+        Text(
+            text = "Plug in USB-C cable or wireless charger to test port power detection in real time",
+            style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
         )
     }
 }
 
-// 17. Headset Test
+// 17. Dynamic Headset & Audio Line Detection
 @Composable
-private fun HeadsetCheckTest(viewModel: FoxyViewModel) {
-    val isPlugged = viewModel.checkHeadset()
+private fun HeadsetCheckTest(context: Context) {
+    var isPlugged by remember { mutableStateOf(false) }
+
+    DisposableEffect(Unit) {
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(c: Context?, intent: Intent?) {
+                if (intent?.action == Intent.ACTION_HEADSET_PLUG) {
+                    val state = intent.getIntExtra("state", -1)
+                    isPlugged = state == 1
+                }
+            }
+        }
+        val filter = IntentFilter(Intent.ACTION_HEADSET_PLUG)
+        context.registerReceiver(receiver, filter)
+
+        val am = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+        if (am != null) {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+                isPlugged = am.getDevices(AudioManager.GET_DEVICES_OUTPUTS).any {
+                    it.type == android.media.AudioDeviceInfo.TYPE_WIRED_HEADSET ||
+                            it.type == android.media.AudioDeviceInfo.TYPE_WIRED_HEADPHONES ||
+                            it.type == android.media.AudioDeviceInfo.TYPE_USB_HEADSET
+                }
+            } else {
+                @Suppress("DEPRECATION")
+                isPlugged = am.isWiredHeadsetOn
+            }
+        }
+
+        onDispose {
+            try {
+                context.unregisterReceiver(receiver)
+            } catch (_: Exception) {}
+        }
+    }
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        verticalArrangement = Arrangement.Center,
+        modifier = Modifier.fillMaxSize()
     ) {
-        Icon(
-            imageVector = Icons.Default.Headphones,
-            contentDescription = "Headphones",
-            modifier = Modifier.size(64.dp),
-            tint = if (isPlugged) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
-        )
-        Spacer(modifier = Modifier.height(16.dp))
+        Box(
+            modifier = Modifier
+                .size(72.dp)
+                .clip(CircleShape)
+                .background(if (isPlugged) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.Headphones,
+                contentDescription = "Headphones",
+                modifier = Modifier.size(38.dp),
+                tint = if (isPlugged) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
+            )
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
         Text(
             text = if (isPlugged) "Headset Connected 🎧" else "No Wired Headset Detected",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface
+            color = if (isPlugged) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
         )
-        Spacer(modifier = Modifier.height(8.dp))
+
+        Spacer(modifier = Modifier.height(6.dp))
+
         Text(
-            text = "Connect 3.5mm jack or Type-C audio adapter to verify analog/digital audio line",
-            style = MaterialTheme.typography.bodyMedium,
+            text = "Connect 3.5mm jack or Type-C audio accessory to verify physical audio routing",
+            style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
         )
     }
 }
 
-private fun getTestIcon(type: TestType): ImageVector {
-    return when (type) {
-        TestType.DISPLAY -> Icons.Default.Tv
-        TestType.TOUCHSCREEN -> Icons.Default.TouchApp
-        TestType.SPEAKER -> Icons.Default.VolumeUp
-        TestType.EARPIECE -> Icons.Default.PhoneInTalk
-        TestType.MICROPHONE -> Icons.Default.Mic
-        TestType.VIBRATION -> Icons.Default.Vibration
-        TestType.FLASHLIGHT -> Icons.Default.FlashlightOn
-        TestType.PROXIMITY -> Icons.Default.Sensors
-        TestType.LIGHT_SENSOR -> Icons.Default.LightMode
-        TestType.ACCELEROMETER -> Icons.Default.ScreenRotation
-        TestType.GYROSCOPE -> Icons.Default.RotateRight
-        TestType.COMPASS -> Icons.Default.Explore
-        TestType.FINGERPRINT -> Icons.Default.Fingerprint
-        TestType.VOLUME_BUTTONS -> Icons.Default.VolumeDown
-        TestType.BLUETOOTH -> Icons.Default.Bluetooth
-        TestType.CHARGING -> Icons.Default.BatteryChargingFull
-        TestType.HEADSET -> Icons.Default.Headphones
-        TestType.VULKAN -> Icons.Default.SportsEsports
-    }
-}
-
+// 18. Vulkan Graphics API Diagnostic
 @Composable
 private fun VulkanDiagnosticTest(viewModel: FoxyViewModel) {
     val deviceInfo by viewModel.deviceInfo.collectAsState()
@@ -1251,10 +1928,10 @@ private fun VulkanDiagnosticTest(viewModel: FoxyViewModel) {
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
-            text = vulkan?.vulkanModStatus ?: "Checking hardware support...",
+            text = if (vulkan?.isVulkanSupported == true) "Vulkan Graphics Driver Ready" else "Vulkan Driver Unavailable",
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.SemiBold,
-            color = if (vulkan?.isVulkanModSupported == true) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+            color = if (vulkan?.isVulkanSupported == true) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
             textAlign = TextAlign.Center
         )
 
@@ -1270,7 +1947,7 @@ private fun VulkanDiagnosticTest(viewModel: FoxyViewModel) {
         ) {
             Column(modifier = Modifier.padding(14.dp)) {
                 Text(
-                    text = "VulkanMod Gaming Checklist",
+                    text = "Vulkan Hardware Capability Checklist",
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
@@ -1284,27 +1961,87 @@ private fun VulkanDiagnosticTest(viewModel: FoxyViewModel) {
                         modifier = Modifier.padding(vertical = 2.dp)
                     )
                 }
+
+                Spacer(modifier = Modifier.height(10.dp))
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = "Driver Status: ${vulkan?.vulkanDriverStatus ?: "Checking..."}",
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
             }
         }
+    }
+}
+
+// Helpers
+private fun getTestTitle(type: TestType): String {
+    return when (type) {
+        TestType.DISPLAY -> "Display & Screen Pixels"
+        TestType.TOUCHSCREEN -> "Touch & Multi-touch Digitizer"
+        TestType.SPEAKER -> "Main Loudspeaker"
+        TestType.EARPIECE -> "Call Voice Earpiece"
+        TestType.MICROPHONE -> "Microphone Acoustic Sampler"
+        TestType.VIBRATION -> "Haptic Vibration Motor"
+        TestType.FLASHLIGHT -> "Camera LED Torch"
+        TestType.PROXIMITY -> "Proximity Sensor"
+        TestType.LIGHT_SENSOR -> "Ambient Light Sensor"
+        TestType.ACCELEROMETER -> "Accelerometer 2D Spirit Level"
+        TestType.GYROSCOPE -> "Gyroscope 3-Axis Motion"
+        TestType.COMPASS -> "Digital Magnetic Compass"
+        TestType.FINGERPRINT -> "Biometrics / Fingerprint Reader"
+        TestType.VOLUME_BUTTONS -> "Physical Volume Buttons"
+        TestType.BLUETOOTH -> "Bluetooth Radio & BLE"
+        TestType.CHARGING -> "Charging Port & Power Bus"
+        TestType.HEADSET -> "Headphone / Audio Line Jack"
+        TestType.VULKAN -> "Vulkan Graphics Driver API"
+    }
+}
+
+private fun getTestIcon(type: TestType): ImageVector {
+    return when (type) {
+        TestType.DISPLAY -> Icons.Default.Tv
+        TestType.TOUCHSCREEN -> Icons.Default.TouchApp
+        TestType.SPEAKER -> Icons.Default.VolumeUp
+        TestType.EARPIECE -> Icons.Default.PhoneInTalk
+        TestType.MICROPHONE -> Icons.Default.Mic
+        TestType.VIBRATION -> Icons.Default.Vibration
+        TestType.FLASHLIGHT -> Icons.Default.FlashlightOn
+        TestType.PROXIMITY -> Icons.Default.Sensors
+        TestType.LIGHT_SENSOR -> Icons.Default.LightMode
+        TestType.ACCELEROMETER -> Icons.Default.ScreenRotation
+        TestType.GYROSCOPE -> Icons.Default.RotateRight
+        TestType.COMPASS -> Icons.Default.Explore
+        TestType.FINGERPRINT -> Icons.Default.Fingerprint
+        TestType.VOLUME_BUTTONS -> Icons.Default.VolumeDown
+        TestType.BLUETOOTH -> Icons.Default.Bluetooth
+        TestType.CHARGING -> Icons.Default.BatteryChargingFull
+        TestType.HEADSET -> Icons.Default.Headphones
+        TestType.VULKAN -> Icons.Default.SportsEsports
     }
 }
 
 @Composable
 private fun getTestIconBgColor(status: TestStatus): Color {
     return when (status) {
-        TestStatus.PASSED -> MaterialTheme.colorScheme.primaryContainer
-        TestStatus.FAILED -> MaterialTheme.colorScheme.errorContainer
-        TestStatus.NOT_SUPPORTED -> MaterialTheme.colorScheme.surfaceVariant
-        else -> MaterialTheme.colorScheme.surface
+        TestStatus.PASSED -> MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+        TestStatus.FAILED -> MaterialTheme.colorScheme.error.copy(alpha = 0.15f)
+        TestStatus.NOT_SUPPORTED -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+        TestStatus.RUNNING -> MaterialTheme.colorScheme.tertiary.copy(alpha = 0.15f)
+        TestStatus.NOT_RUN -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
     }
 }
 
 @Composable
 private fun getTestIconColor(status: TestStatus): Color {
     return when (status) {
-        TestStatus.PASSED -> MaterialTheme.colorScheme.onPrimaryContainer
-        TestStatus.FAILED -> MaterialTheme.colorScheme.onErrorContainer
-        TestStatus.NOT_SUPPORTED -> MaterialTheme.colorScheme.outline
-        else -> MaterialTheme.colorScheme.primary
+        TestStatus.PASSED -> MaterialTheme.colorScheme.primary
+        TestStatus.FAILED -> MaterialTheme.colorScheme.error
+        TestStatus.NOT_SUPPORTED -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+        TestStatus.RUNNING -> MaterialTheme.colorScheme.tertiary
+        TestStatus.NOT_RUN -> MaterialTheme.colorScheme.onSurfaceVariant
     }
 }

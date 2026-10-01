@@ -147,8 +147,8 @@ class HardwareDiagnosticsManager(private val context: Context) {
             ),
             DiagnosticTestItem(
                 type = TestType.VULKAN,
-                title = "Vulkan API & VulkanMod",
-                description = "Inspect Vulkan graphics API, driver level and VulkanMod gaming support",
+                title = "Vulkan Graphics API",
+                description = "Inspect Vulkan graphics API, driver version and hardware acceleration level",
                 iconName = "sports_esports"
             )
         )
@@ -174,13 +174,14 @@ class HardwareDiagnosticsManager(private val context: Context) {
         }
 
         val usage = if (isEarpiece) AudioAttributes.USAGE_VOICE_COMMUNICATION else AudioAttributes.USAGE_MEDIA
-        val streamType = if (isEarpiece) AudioManager.STREAM_VOICE_CALL else AudioManager.STREAM_MUSIC
+        val prevMode = audioManager?.mode
+        val prevSpeaker = audioManager?.isSpeakerphoneOn
 
         val audioTrack = AudioTrack.Builder()
             .setAudioAttributes(
                 AudioAttributes.Builder()
                     .setUsage(usage)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                    .setContentType(if (isEarpiece) AudioAttributes.CONTENT_TYPE_SPEECH else AudioAttributes.CONTENT_TYPE_MUSIC)
                     .build()
             )
             .setAudioFormat(
@@ -195,12 +196,24 @@ class HardwareDiagnosticsManager(private val context: Context) {
             .build()
 
         try {
+            if (isEarpiece && audioManager != null) {
+                audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
+                audioManager.isSpeakerphoneOn = false
+            }
             audioTrack.write(generatedSnd, 0, generatedSnd.size)
             audioTrack.play()
             Thread.sleep(durationMs.toLong() + 100)
             audioTrack.stop()
             audioTrack.release()
-        } catch (_: Exception) {}
+        } catch (_: Exception) {
+        } finally {
+            if (isEarpiece && audioManager != null) {
+                try {
+                    if (prevSpeaker != null) audioManager.isSpeakerphoneOn = prevSpeaker
+                    if (prevMode != null) audioManager.mode = prevMode
+                } catch (_: Exception) {}
+            }
+        }
     }
 
     // 2. Vibration test
@@ -222,6 +235,19 @@ class HardwareDiagnosticsManager(private val context: Context) {
     fun toggleTorch(enable: Boolean): Boolean {
         val cm = cameraManager ?: return false
         try {
+            // First pass: Find camera that explicitly declares flash support
+            for (id in cm.cameraIdList) {
+                try {
+                    val chars = cm.getCameraCharacteristics(id)
+                    val hasFlash = chars.get(android.hardware.camera2.CameraCharacteristics.FLASH_INFO_AVAILABLE) == true
+                    if (hasFlash) {
+                        cm.setTorchMode(id, enable)
+                        isTorchOn = enable
+                        return true
+                    }
+                } catch (_: Exception) {}
+            }
+            // Fallback: try all IDs
             for (id in cm.cameraIdList) {
                 try {
                     cm.setTorchMode(id, enable)
@@ -233,7 +259,64 @@ class HardwareDiagnosticsManager(private val context: Context) {
         return false
     }
 
-    // 4. Quick charging detection
+    // 4. Real Microphone Audio Decibel Meter
+    fun startMicrophoneListener(onAmplitude: (Float) -> Unit): AutoCloseable? {
+        val minBufferSize = AudioRecord.getMinBufferSize(
+            16000,
+            AudioFormat.CHANNEL_IN_MONO,
+            AudioFormat.ENCODING_PCM_16BIT
+        )
+        if (minBufferSize <= 0) return null
+
+        return try {
+            val record = AudioRecord(
+                MediaRecorder.AudioSource.MIC,
+                16000,
+                AudioFormat.CHANNEL_IN_MONO,
+                AudioFormat.ENCODING_PCM_16BIT,
+                minBufferSize * 2
+            )
+            if (record.state != AudioRecord.STATE_INITIALIZED) {
+                record.release()
+                return null
+            }
+            record.startRecording()
+            val buffer = ShortArray(minBufferSize)
+            var isRunning = true
+
+            val thread = Thread {
+                while (isRunning) {
+                    val read = record.read(buffer, 0, buffer.size)
+                    if (read > 0) {
+                        var sum = 0.0
+                        for (i in 0 until read) {
+                            sum += buffer[i] * buffer[i]
+                        }
+                        val rms = Math.sqrt(sum / read)
+                        val db = if (rms > 1.0) (20.0 * Math.log10(rms)).toFloat().coerceIn(30f, 100f) else 30f
+                        onAmplitude(db)
+                    }
+                    try {
+                        Thread.sleep(60)
+                    } catch (_: Exception) {}
+                }
+                try {
+                    record.stop()
+                    record.release()
+                } catch (_: Exception) {}
+            }
+            thread.isDaemon = true
+            thread.start()
+
+            AutoCloseable {
+                isRunning = false
+            }
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    // 5. Quick charging detection
     fun checkChargingState(): Boolean {
         val ifilter = IntentFilter(Intent.ACTION_BATTERY_CHANGED)
         val statusIntent = context.registerReceiver(null, ifilter)

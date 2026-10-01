@@ -229,7 +229,7 @@ fun HomeScreen(
             )
         }
 
-        // Dedicated Vulkan API & VulkanMod Support Card
+        // Dedicated Vulkan Graphics API Details Card
         item {
             val vulkan = deviceInfo?.vulkan
             Card(
@@ -272,7 +272,7 @@ fun HomeScreen(
                             }
                             Column {
                                 Text(
-                                    text = "Vulkan API & VulkanMod",
+                                    text = "Vulkan Graphics API",
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onSurface
@@ -287,14 +287,14 @@ fun HomeScreen(
 
                         Surface(
                             shape = RoundedCornerShape(12.dp),
-                            color = if (vulkan?.isVulkanModSupported == true) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
-                            contentColor = if (vulkan?.isVulkanModSupported == true) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+                            color = if (vulkan?.isVulkanSupported == true) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
+                            contentColor = if (vulkan?.isVulkanSupported == true) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
                         ) {
                             Text(
-                                text = if (vulkan?.isVulkanModSupported == true) "VulkanMod Ready ⚡" else "Check Info",
+                                text = if (vulkan?.isVulkanSupported == true) "Vulkan ${vulkan.majorVersion}.${vulkan.minorVersion}" else "Not Supported",
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Bold,
-                                color = if (vulkan?.isVulkanModSupported == true) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                                color = if (vulkan?.isVulkanSupported == true) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                             )
                         }
@@ -359,20 +359,22 @@ fun HomeScreen(
                             Spacer(modifier = Modifier.height(10.dp))
 
                             Text(
-                                text = "VulkanMod Compatibility Status:",
+                                text = "Vulkan API & Driver Details:",
                                 style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Text(
-                                text = vulkan?.vulkanModStatus ?: "Not Supported",
-                                style = MaterialTheme.typography.bodyLarge,
                                 fontWeight = FontWeight.Bold,
-                                color = if (vulkan?.isVulkanModSupported == true) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                                color = MaterialTheme.colorScheme.onSurface
                             )
+                            Spacer(modifier = Modifier.height(6.dp))
+
+                            InfoRowItem("Vulkan API Version", vulkan?.apiVersionString ?: "N/A")
+                            InfoRowItem("Hardware Level", if ((vulkan?.hardwareLevel ?: 0) >= 1) "Level ${vulkan?.hardwareLevel} (Desktop-class acceleration)" else "Level 0 (Mobile Base)")
+                            InfoRowItem("Compute Shaders", if ((vulkan?.hardwareComputeLevel ?: -1) >= 0) "Supported (Level ${vulkan?.hardwareComputeLevel})" else "Not Supported")
+                            InfoRowItem("ABI Architecture", if (vulkan?.is64BitAbi == true) "64-Bit (arm64-v8a)" else "32-Bit")
+                            InfoRowItem("Driver Features", if (vulkan?.isVulkanSupported == true) "Hardware Accelerated Graphics Pipeline" else "Software / Unavailable")
 
                             Spacer(modifier = Modifier.height(10.dp))
                             Text(
-                                text = "PojavLauncher / VulkanMod Gaming Checklist:",
+                                text = "Hardware Feature Checks:",
                                 style = MaterialTheme.typography.labelMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onSurface
@@ -415,7 +417,7 @@ fun HomeScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "Tap to view VulkanMod gaming checklist",
+                                text = "Tap to view full Vulkan specifications & details",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.primary
                             )
@@ -498,7 +500,7 @@ fun HomeScreen(
                             InfoRowItem("NFC Available", if (deviceInfo?.capabilities?.hasNfc == true) "Yes" else "No")
                             InfoRowItem("Biometrics", if (deviceInfo?.capabilities?.hasFingerprint == true) "Fingerprint Supported" else "Standard")
                             InfoRowItem("Vulkan API", deviceInfo?.vulkan?.apiVersionString ?: "N/A")
-                            InfoRowItem("VulkanMod Gaming", if (deviceInfo?.vulkan?.isVulkanModSupported == true) "Supported ⚡" else "Not Supported")
+                            InfoRowItem("Vulkan Hardware Level", "Level ${deviceInfo?.vulkan?.hardwareLevel ?: 0}")
 
                             Spacer(modifier = Modifier.height(12.dp))
                             Button(

@@ -627,13 +627,13 @@ class SystemInfoProvider(private val context: Context) {
         if (is64Bit) {
             compatDetails.add("✓ 64-Bit ABI architecture (${Build.SUPPORTED_ABIS.firstOrNull() ?: "arm64-v8a"})")
         } else {
-            compatDetails.add("✗ 32-Bit CPU architecture (VulkanMod requires 64-bit)")
+            compatDetails.add("ℹ️ 32-Bit CPU architecture (64-Bit recommended for high-performance Vulkan pipelines)")
         }
 
         if (hardwareLevel >= 1) {
-            compatDetails.add("✓ Vulkan Hardware Level $hardwareLevel (Desktop-class acceleration)")
+            compatDetails.add("✓ Vulkan Hardware Level $hardwareLevel (Desktop-class acceleration & full pipeline)")
         } else if (hardwareLevel == 0) {
-            compatDetails.add("⚠️ Vulkan Hardware Level 0 (Basic mobile acceleration)")
+            compatDetails.add("⚠️ Vulkan Hardware Level 0 (Mobile baseline acceleration)")
         } else {
             compatDetails.add("✗ No Vulkan Hardware Level reported")
         }
@@ -642,11 +642,12 @@ class SystemInfoProvider(private val context: Context) {
             compatDetails.add("✓ Hardware Compute Shaders Supported (Level $computeLevel)")
         }
 
-        val isVulkanModSupported = isSupported && meetsVersion && is64Bit && hardwareLevel >= 0
-        val modStatus = when {
-            isVulkanModSupported && hardwareLevel >= 1 -> "Fully Compatible 🎮⚡ (Ready for PojavLauncher & VulkanMod)"
-            isVulkanModSupported -> "Compatible with Fallbacks 🎮⚠️ (Level 0 acceleration)"
-            else -> "Not Compatible with VulkanMod ❌"
+        val isAccelerated = isSupported && meetsVersion && hardwareLevel >= 0
+        val driverStatus = when {
+            isAccelerated && hardwareLevel >= 1 -> "High-Performance Accelerated (Level $hardwareLevel) ⚡"
+            isAccelerated -> "Hardware Accelerated (Level 0 Baseline) 🎮"
+            isSupported -> "Basic Driver Supported (Legacy Pipeline)"
+            else -> "Vulkan Graphics Driver Not Available ❌"
         }
 
         return VulkanSpec(
@@ -658,8 +659,8 @@ class SystemInfoProvider(private val context: Context) {
             hardwareLevel = hardwareLevel,
             hardwareComputeLevel = computeLevel,
             is64BitAbi = is64Bit,
-            isVulkanModSupported = isVulkanModSupported,
-            vulkanModStatus = modStatus,
+            isVulkanHardwareAccelerated = isAccelerated,
+            vulkanDriverStatus = driverStatus,
             compatibilityDetails = compatDetails
         )
     }

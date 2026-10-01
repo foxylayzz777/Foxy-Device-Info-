@@ -79,11 +79,34 @@ class FoxyViewModel(application: Application) : AndroidViewModel(application) {
     private val _isFloatingHudEnabled = MutableStateFlow(false)
     val isFloatingHudEnabled: StateFlow<Boolean> = _isFloatingHudEnabled.asStateFlow()
 
-    // Themes
-    private val _themeStyle = MutableStateFlow(com.example.ui.theme.AppThemeStyle.FOXY)
+    // Persistent Theme Settings
+    private val prefs by lazy {
+        application.getSharedPreferences("foxy_device_info_prefs", android.content.Context.MODE_PRIVATE)
+    }
+
+    private fun loadSavedThemeStyle(): com.example.ui.theme.AppThemeStyle {
+        val savedName = prefs.getString("pref_theme_style", com.example.ui.theme.AppThemeStyle.LIQUID_GLASS.name)
+        return try {
+            com.example.ui.theme.AppThemeStyle.valueOf(savedName ?: com.example.ui.theme.AppThemeStyle.LIQUID_GLASS.name)
+        } catch (_: Exception) {
+            com.example.ui.theme.AppThemeStyle.LIQUID_GLASS
+        }
+    }
+
+    private fun loadSavedThemeMode(): com.example.ui.theme.AppThemeMode {
+        val savedName = prefs.getString("pref_theme_mode", com.example.ui.theme.AppThemeMode.SYSTEM.name)
+        return try {
+            com.example.ui.theme.AppThemeMode.valueOf(savedName ?: com.example.ui.theme.AppThemeMode.SYSTEM.name)
+        } catch (_: Exception) {
+            com.example.ui.theme.AppThemeMode.SYSTEM
+        }
+    }
+
+    // Themes (Default is LIQUID_GLASS, persisted across app restarts)
+    private val _themeStyle = MutableStateFlow(loadSavedThemeStyle())
     val themeStyle: StateFlow<com.example.ui.theme.AppThemeStyle> = _themeStyle.asStateFlow()
 
-    private val _themeMode = MutableStateFlow(com.example.ui.theme.AppThemeMode.SYSTEM)
+    private val _themeMode = MutableStateFlow(loadSavedThemeMode())
     val themeMode: StateFlow<com.example.ui.theme.AppThemeMode> = _themeMode.asStateFlow()
 
     private var monitorJob: Job? = null
@@ -96,10 +119,12 @@ class FoxyViewModel(application: Application) : AndroidViewModel(application) {
 
     fun setThemeStyle(style: com.example.ui.theme.AppThemeStyle) {
         _themeStyle.value = style
+        prefs.edit().putString("pref_theme_style", style.name).apply()
     }
 
     fun setThemeMode(mode: com.example.ui.theme.AppThemeMode) {
         _themeMode.value = mode
+        prefs.edit().putString("pref_theme_mode", mode.name).apply()
     }
 
     fun refreshDeviceInfo() {
@@ -191,6 +216,10 @@ class FoxyViewModel(application: Application) : AndroidViewModel(application) {
 
     fun toggleTorch(enable: Boolean): Boolean {
         return diagnosticsManager.toggleTorch(enable)
+    }
+
+    fun startMicrophoneListener(onAmplitude: (Float) -> Unit): AutoCloseable? {
+        return diagnosticsManager.startMicrophoneListener(onAmplitude)
     }
 
     suspend fun playAudioTone(frequency: Int = 440, durationMs: Int = 1000, isEarpiece: Boolean = false) {
