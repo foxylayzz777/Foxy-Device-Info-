@@ -20,6 +20,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -29,9 +30,13 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -51,8 +56,10 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -404,7 +411,8 @@ fun ModernTestFilterTabs(
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
                         color = if (isSelected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                     )
                 }
             }
@@ -755,6 +763,70 @@ fun TestStatusBadge(status: TestStatus) {
 data class Tuple4<A, B, C, D>(val a: A, val b: B, val c: C, val d: D)
 
 @Composable
+fun FullScreenInteractiveTest(
+    testType: TestType,
+    testIndex: Int,
+    totalTests: Int,
+    viewModel: FoxyViewModel,
+    onDismiss: () -> Unit,
+    onNextTest: () -> Unit,
+    onPrevTest: (() -> Unit)? = null
+) {
+    when (testType) {
+        TestType.DISPLAY -> {
+            FullScreenDisplayTest(
+                testIndex = testIndex,
+                totalTests = totalTests,
+                onDismiss = onDismiss,
+                onMarkPassed = {
+                    viewModel.setTestStatus(testType, TestStatus.PASSED)
+                    onNextTest()
+                },
+                onMarkFailed = {
+                    viewModel.setTestStatus(testType, TestStatus.FAILED)
+                    onNextTest()
+                },
+                onNextTest = onNextTest
+            )
+        }
+        TestType.TOUCHSCREEN -> {
+            FullScreenTouchscreenTest(
+                testIndex = testIndex,
+                totalTests = totalTests,
+                onDismiss = onDismiss,
+                onMarkPassed = {
+                    viewModel.setTestStatus(testType, TestStatus.PASSED)
+                    onNextTest()
+                },
+                onMarkFailed = {
+                    viewModel.setTestStatus(testType, TestStatus.FAILED)
+                    onNextTest()
+                },
+                onNextTest = onNextTest
+            )
+        }
+        else -> {
+            FullScreenStandardHardwareTest(
+                testType = testType,
+                testIndex = testIndex,
+                totalTests = totalTests,
+                viewModel = viewModel,
+                onDismiss = onDismiss,
+                onMarkPassed = {
+                    viewModel.setTestStatus(testType, TestStatus.PASSED)
+                    onNextTest()
+                },
+                onMarkFailed = {
+                    viewModel.setTestStatus(testType, TestStatus.FAILED)
+                    onNextTest()
+                },
+                onNextTest = onNextTest
+            )
+        }
+    }
+}
+
+@Composable
 fun InteractiveTestModal(
     testType: TestType,
     testIndex: Int,
@@ -763,9 +835,504 @@ fun InteractiveTestModal(
     onDismiss: () -> Unit,
     onNextTest: () -> Unit
 ) {
+    FullScreenInteractiveTest(
+        testType = testType,
+        testIndex = testIndex,
+        totalTests = totalTests,
+        viewModel = viewModel,
+        onDismiss = onDismiss,
+        onNextTest = onNextTest
+    )
+}
+
+@Composable
+private fun FullScreenDisplayTest(
+    testIndex: Int,
+    totalTests: Int,
+    onDismiss: () -> Unit,
+    onMarkPassed: () -> Unit,
+    onMarkFailed: () -> Unit,
+    onNextTest: () -> Unit
+) {
+    val colors = remember {
+        listOf(
+            Triple(Color(0xFFFF0000), "Pure Red", "Check subpixels & dead pixel matrix"),
+            Triple(Color(0xFF00FF00), "Pure Green", "Check subpixels & green tint"),
+            Triple(Color(0xFF0000FF), "Pure Blue", "Check subpixels & blue aging"),
+            Triple(Color(0xFFFFFFFF), "Pure White", "Check backlight uniformity & tint"),
+            Triple(Color(0xFF000000), "Pure Black", "Check OLED true black & edge bleed"),
+            Triple(Color(0xFFFFFF00), "Pure Yellow", "Check RG subpixel balance"),
+            Triple(Color(0xFF00FFFF), "Pure Cyan", "Check GB subpixel balance"),
+            Triple(Color(0xFFFF00FF), "Pure Magenta", "Check RB subpixel balance"),
+            Triple(Color(0xFF808080), "50% Neutral Gray", "Check display banding & DSE"),
+            Triple(Color(0xFF333333), "20% Dark Gray", "Check near-black OLED crush")
+        )
+    }
+    var colorIndex by remember { mutableIntStateOf(0) }
+    var showOverlayControls by remember { mutableStateOf(true) }
+
+    val (currentColor, name, desc) = colors[colorIndex]
+
+    BackHandler(onBack = onDismiss)
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(currentColor)
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onTap = {
+                        colorIndex = (colorIndex + 1) % colors.size
+                    },
+                    onDoubleTap = {
+                        showOverlayControls = !showOverlayControls
+                    }
+                )
+            }
+    ) {
+        // Floating Top Header
+        AnimatedVisibility(
+            visible = showOverlayControls,
+            enter = fadeIn() + slideInVertically { -it },
+            exit = fadeOut() + slideOutVertically { -it },
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .statusBarsPadding()
+                .padding(16.dp)
+        ) {
+            Surface(
+                shape = RoundedCornerShape(18.dp),
+                color = Color.Black.copy(alpha = 0.75f),
+                contentColor = Color.White,
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.25f)),
+                shadowElevation = 8.dp
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    IconButton(
+                        onClick = onDismiss,
+                        modifier = Modifier
+                            .size(36.dp)
+                            .testTag("test_back_button")
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Exit Display Test",
+                            tint = Color.White
+                        )
+                    }
+                    Column {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Text(
+                                text = name,
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = Color.White
+                            )
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = Color.White.copy(alpha = 0.2f)
+                            ) {
+                                Text(
+                                    text = "${colorIndex + 1}/${colors.size}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
+                        Text(
+                            text = desc,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.White.copy(alpha = 0.8f)
+                        )
+                    }
+                    IconButton(
+                        onClick = { showOverlayControls = false },
+                        modifier = Modifier
+                            .size(36.dp)
+                            .testTag("toggle_immersion")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.VisibilityOff,
+                            contentDescription = "Hide controls for immersion",
+                            tint = Color.White.copy(alpha = 0.8f)
+                        )
+                    }
+                }
+            }
+        }
+
+        // Floating Bottom Actions
+        AnimatedVisibility(
+            visible = showOverlayControls,
+            enter = fadeIn() + slideInVertically { it },
+            exit = fadeOut() + slideOutVertically { it },
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .navigationBarsPadding()
+                .padding(16.dp)
+        ) {
+            Surface(
+                shape = RoundedCornerShape(20.dp),
+                color = Color.Black.copy(alpha = 0.75f),
+                contentColor = Color.White,
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.25f)),
+                shadowElevation = 8.dp
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = onMarkFailed,
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            containerColor = Color(0xFFFF5252).copy(alpha = 0.2f),
+                            contentColor = Color(0xFFFF5252)
+                        ),
+                        border = BorderStroke(1.dp, Color(0xFFFF5252).copy(alpha = 0.6f)),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.testTag("mark_failed_button")
+                    ) {
+                        Icon(Icons.Default.Cancel, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Mark Failed", fontWeight = FontWeight.Bold)
+                    }
+
+                    Button(
+                        onClick = onMarkPassed,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF00E676),
+                            contentColor = Color.Black
+                        ),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.testTag("mark_passed_button")
+                    ) {
+                        Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Mark Passed", fontWeight = FontWeight.Bold)
+                    }
+
+                    IconButton(
+                        onClick = onNextTest,
+                        modifier = Modifier
+                            .size(40.dp)
+                            .testTag("next_test_button")
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                            contentDescription = "Next Test",
+                            tint = Color.White
+                        )
+                    }
+                }
+            }
+        }
+
+        // Tap hint when controls hidden
+        if (!showOverlayControls) {
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = Color.Black.copy(alpha = 0.5f),
+                contentColor = Color.White,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .navigationBarsPadding()
+                    .padding(bottom = 24.dp)
+            ) {
+                Text(
+                    text = "Tap to cycle • Double-tap for controls",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.White.copy(alpha = 0.8f),
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun FullScreenTouchscreenTest(
+    testIndex: Int,
+    totalTests: Int,
+    onDismiss: () -> Unit,
+    onMarkPassed: () -> Unit,
+    onMarkFailed: () -> Unit,
+    onNextTest: () -> Unit
+) {
+    BackHandler(onBack = onDismiss)
+
+    var touchCount by remember { mutableIntStateOf(0) }
+    var lastTouchPos by remember { mutableStateOf<Offset?>(null) }
+    val touchedCells = remember { mutableStateMapOf<Int, Boolean>() }
+
+    BoxWithConstraints(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFF0D1117))
+    ) {
+        val screenWidth = maxWidth
+        val screenHeight = maxHeight
+        val numCols = (screenWidth / 46.dp).toInt().coerceIn(6, 16)
+        val numRows = (screenHeight / 46.dp).toInt().coerceIn(8, 28)
+        val totalCells = numCols * numRows
+
+        val touchedCount = touchedCells.size
+        val coveragePct = if (totalCells > 0) (touchedCount.toFloat() / totalCells * 100).toInt() else 0
+
+        // Full Screen Gesture Canvas
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .pointerInput(Unit) {
+                    detectDragGestures(
+                        onDragStart = { offset ->
+                            lastTouchPos = offset
+                            touchCount++
+                            val col = (offset.x / (size.width / numCols)).toInt().coerceIn(0, numCols - 1)
+                            val row = (offset.y / (size.height / numRows)).toInt().coerceIn(0, numRows - 1)
+                            touchedCells[row * numCols + col] = true
+                        },
+                        onDrag = { change, _ ->
+                            lastTouchPos = change.position
+                            val col = (change.position.x / (size.width / numCols)).toInt().coerceIn(0, numCols - 1)
+                            val row = (change.position.y / (size.height / numRows)).toInt().coerceIn(0, numRows - 1)
+                            touchedCells[row * numCols + col] = true
+                        }
+                    )
+                }
+        ) {
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val w = size.width
+                val h = size.height
+                val cW = w / numCols
+                val cH = h / numRows
+
+                for (r in 0 until numRows) {
+                    for (c in 0 until numCols) {
+                        val idx = r * numCols + c
+                        val isTouched = touchedCells[idx] == true
+                        val left = c * cW
+                        val top = r * cH
+
+                        if (isTouched) {
+                            drawRect(
+                                color = Color(0xFF00E676).copy(alpha = 0.65f),
+                                topLeft = Offset(left, top),
+                                size = Size(cW, cH)
+                            )
+                        }
+
+                        drawRect(
+                            color = Color(0xFF30363D),
+                            topLeft = Offset(left, top),
+                            size = Size(cW, cH),
+                            style = Stroke(width = 1f)
+                        )
+                    }
+                }
+
+                lastTouchPos?.let { pos ->
+                    drawCircle(
+                        color = Color(0xFF00E676),
+                        radius = 28f,
+                        center = pos
+                    )
+                    drawCircle(
+                        color = Color.White,
+                        radius = 12f,
+                        center = pos
+                    )
+                }
+            }
+
+            if (touchedCells.isEmpty()) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(16.dp),
+                        color = Color.Black.copy(alpha = 0.7f),
+                        contentColor = Color.White
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(20.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = "👆 Slide Finger Across Entire Screen",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "Cover every grid block to test digitizer touch matrix",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color.White.copy(alpha = 0.8f)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        // Top Floating Info Bar
+        Surface(
+            shape = RoundedCornerShape(18.dp),
+            color = Color.Black.copy(alpha = 0.8f),
+            contentColor = Color.White,
+            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.2f)),
+            shadowElevation = 8.dp,
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .statusBarsPadding()
+                .padding(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                IconButton(
+                    onClick = onDismiss,
+                    modifier = Modifier
+                        .size(36.dp)
+                        .testTag("test_back_button")
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Exit Touchscreen Test",
+                        tint = Color.White
+                    )
+                }
+
+                Column {
+                    Text(
+                        text = "Touch Digitizer",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                    Text(
+                        text = lastTouchPos?.let { "(${it.x.toInt()}, ${it.y.toInt()}) px" } ?: "Touch anywhere",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.White.copy(alpha = 0.7f)
+                    )
+                }
+
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = if (coveragePct >= 75) Color(0xFF00E676) else Color(0xFF388E3C)
+                ) {
+                    Text(
+                        text = "$coveragePct% ($touchedCount/$totalCells)",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = if (coveragePct >= 75) Color.Black else Color.White,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                }
+
+                TextButton(
+                    onClick = {
+                        touchedCells.clear()
+                        lastTouchPos = null
+                    },
+                    modifier = Modifier.testTag("clear_touch_grid"),
+                    colors = ButtonDefaults.textButtonColors(contentColor = Color.White.copy(alpha = 0.9f))
+                ) {
+                    Text("Clear")
+                }
+            }
+        }
+
+        // Bottom Floating Action Bar
+        Surface(
+            shape = RoundedCornerShape(20.dp),
+            color = Color.Black.copy(alpha = 0.8f),
+            contentColor = Color.White,
+            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.2f)),
+            shadowElevation = 8.dp,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .navigationBarsPadding()
+                .padding(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                OutlinedButton(
+                    onClick = onMarkFailed,
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        containerColor = Color(0xFFFF5252).copy(alpha = 0.2f),
+                        contentColor = Color(0xFFFF5252)
+                    ),
+                    border = BorderStroke(1.dp, Color(0xFFFF5252).copy(alpha = 0.6f)),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.testTag("mark_failed_button")
+                ) {
+                    Icon(Icons.Default.Cancel, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Mark Failed", fontWeight = FontWeight.Bold)
+                }
+
+                Button(
+                    onClick = onMarkPassed,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF00E676),
+                        contentColor = Color.Black
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.testTag("mark_passed_button")
+                ) {
+                    Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Mark Passed", fontWeight = FontWeight.Bold)
+                }
+
+                IconButton(
+                    onClick = onNextTest,
+                    modifier = Modifier
+                        .size(40.dp)
+                        .testTag("next_test_button")
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                        contentDescription = "Next Test",
+                        tint = Color.White
+                    )
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun FullScreenStandardHardwareTest(
+    testType: TestType,
+    testIndex: Int,
+    totalTests: Int,
+    viewModel: FoxyViewModel,
+    onDismiss: () -> Unit,
+    onMarkPassed: () -> Unit,
+    onMarkFailed: () -> Unit,
+    onNextTest: () -> Unit
+) {
     val context = LocalContext.current
     val focusRequester = remember { FocusRequester() }
-
     var volUpTriggered by remember { mutableStateOf(false) }
     var volDownTriggered by remember { mutableStateOf(false) }
 
@@ -780,84 +1347,166 @@ fun InteractiveTestModal(
         }
     }
 
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false)
-    ) {
-        Surface(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp)
-                .focusRequester(focusRequester)
-                .focusable()
-                .onKeyEvent { keyEvent ->
-                    if (testType == TestType.VOLUME_BUTTONS && keyEvent.type == KeyEventType.KeyDown) {
-                        when (keyEvent.nativeKeyEvent.keyCode) {
-                            KeyEvent.KEYCODE_VOLUME_UP -> {
-                                volUpTriggered = true
-                                true
-                            }
-                            KeyEvent.KEYCODE_VOLUME_DOWN -> {
-                                volDownTriggered = true
-                                true
-                            }
-                            else -> false
+    Scaffold(
+        modifier = Modifier
+            .fillMaxSize()
+            .focusRequester(focusRequester)
+            .focusable()
+            .onKeyEvent { keyEvent ->
+                if (testType == TestType.VOLUME_BUTTONS && keyEvent.type == KeyEventType.KeyDown) {
+                    when (keyEvent.nativeKeyEvent.keyCode) {
+                        KeyEvent.KEYCODE_VOLUME_UP -> {
+                            volUpTriggered = true
+                            true
                         }
-                    } else false
+                        KeyEvent.KEYCODE_VOLUME_DOWN -> {
+                            volDownTriggered = true
+                            true
+                        }
+                        else -> false
+                    }
+                } else false
+            },
+        containerColor = MaterialTheme.colorScheme.background,
+        contentColor = MaterialTheme.colorScheme.onBackground,
+        topBar = {
+            TopAppBar(
+                title = {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Surface(
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f),
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = getTestIcon(testType),
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+                        Column(modifier = Modifier.weight(1f, fill = false)) {
+                            Text(
+                                text = getTestTitle(testType),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Text(
+                                text = "Test $testIndex of $totalTests • ${getTestCategory(testType)}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
                 },
-            shape = RoundedCornerShape(24.dp),
-            color = MaterialTheme.colorScheme.surface,
-            contentColor = MaterialTheme.colorScheme.onSurface,
-            tonalElevation = 6.dp,
-            border = androidx.compose.foundation.BorderStroke(
-                1.dp,
-                MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)
+                navigationIcon = {
+                    IconButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.testTag("test_back_button")
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back"
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+                    titleContentColor = MaterialTheme.colorScheme.onSurface,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onSurface
+                )
             )
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(20.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.SpaceBetween
+        },
+        bottomBar = {
+            Surface(
+                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+                tonalElevation = 8.dp,
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
             ) {
-                // Header: Step, Title, Close Button
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .navigationBarsPadding()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column {
-                        Text(
-                            text = "Test $testIndex of $totalTests",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.primary,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = getTestTitle(testType),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
+                    OutlinedButton(
+                        onClick = onMarkFailed,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(48.dp)
+                            .testTag("mark_failed_button"),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.2f),
+                            contentColor = MaterialTheme.colorScheme.error
+                        ),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f))
+                    ) {
+                        Icon(Icons.Default.Cancel, contentDescription = "Fail", modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Mark Failed", fontWeight = FontWeight.Bold)
                     }
-                    IconButton(onClick = onDismiss) {
-                        Icon(Icons.Default.Close, contentDescription = "Close")
+
+                    Button(
+                        onClick = onMarkPassed,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(48.dp)
+                            .testTag("mark_passed_button"),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF00E676),
+                            contentColor = Color.Black
+                        )
+                    ) {
+                        Icon(Icons.Default.CheckCircle, contentDescription = "Pass", modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Mark Passed", fontWeight = FontWeight.Bold)
+                    }
+
+                    IconButton(
+                        onClick = onNextTest,
+                        modifier = Modifier
+                            .size(48.dp)
+                            .testTag("next_test_button")
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                            contentDescription = "Next Test",
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
                     }
                 }
-
-                HorizontalDivider(
-                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
-                    modifier = Modifier.padding(vertical = 8.dp)
-                )
-
-                // Interactive Test Area
-                Box(
+            }
+        }
+    ) { innerPadding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding),
+            contentAlignment = Alignment.TopCenter
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .widthIn(max = 680.dp)
+            ) {
+                Column(
                     modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp),
-                    contentAlignment = Alignment.Center
+                        .fillMaxSize()
+                        .padding(horizontal = 20.dp, vertical = 16.dp)
+                        .verticalScroll(rememberScrollState()),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
                 ) {
                     when (testType) {
                         TestType.DISPLAY -> DisplayTestCanvas()
@@ -883,48 +1532,6 @@ fun InteractiveTestModal(
                         TestType.CHARGING -> ChargingCheckTest(context)
                         TestType.HEADSET -> HeadsetCheckTest(context)
                         TestType.VULKAN -> VulkanDiagnosticTest(viewModel)
-                    }
-                }
-
-                // Bottom Action buttons (Pass / Fail / Next)
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        OutlinedButton(
-                            onClick = {
-                                viewModel.setTestStatus(testType, TestStatus.FAILED)
-                                onNextTest()
-                            },
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(12.dp),
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                        ) {
-                            Icon(Icons.Default.Cancel, contentDescription = "Fail", modifier = Modifier.size(18.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("Mark Failed")
-                        }
-
-                        Button(
-                            onClick = {
-                                viewModel.setTestStatus(testType, TestStatus.PASSED)
-                                onNextTest()
-                            },
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(12.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
-                        ) {
-                            Icon(Icons.Default.CheckCircle, contentDescription = "Pass", modifier = Modifier.size(18.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("Mark Passed")
-                        }
                     }
                 }
             }

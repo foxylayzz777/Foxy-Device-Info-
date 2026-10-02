@@ -2,6 +2,7 @@ package com.example.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -15,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ui.components.SparklineGraph
@@ -24,16 +26,21 @@ import java.util.Locale
 @Composable
 fun MonitorScreen(
     viewModel: FoxyViewModel,
+    onNavigateToCpuSimulator: () -> Unit = {},
+    onOpenRefreshRateMenu: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val metrics by viewModel.realtimeMetrics.collectAsState()
     val deviceInfo by viewModel.deviceInfo.collectAsState()
     val isFloatingHudEnabled by viewModel.isFloatingHudEnabled.collectAsState()
+    val cpuSimResult by viewModel.cpuSimulationResult.collectAsState()
+    val cpuSimProgress by viewModel.cpuSimulationProgress.collectAsState()
 
     val ramUsedMb = (metrics.ramUsedBytes / (1024.0 * 1024.0))
     val ramTotalMb = (metrics.ramTotalBytes / (1024.0 * 1024.0))
     val downKb = metrics.downloadSpeedBytesPerSec / 1024f
     val upKb = metrics.uploadSpeedBytesPerSec / 1024f
+    val displayHz = deviceInfo?.gpuDisplay?.refreshRateHz?.toInt() ?: 90
 
     LazyColumn(
         modifier = modifier
@@ -42,6 +49,161 @@ fun MonitorScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp),
         contentPadding = PaddingValues(top = 16.dp, bottom = 32.dp)
     ) {
+        // 0. CPU Load Simulation & Benchmark Hero Card
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(22.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                    contentColor = MaterialTheme.colorScheme.onSurface
+                ),
+                border = androidx.compose.foundation.BorderStroke(
+                    1.2.dp,
+                    MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)
+                )
+            ) {
+                Column(modifier = Modifier.padding(18.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            modifier = Modifier.weight(1f, fill = false).padding(end = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(38.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Bolt,
+                                    contentDescription = "CPU Simulator",
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Column {
+                                Text(
+                                    text = "CPU Load Simulator",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Text(
+                                    text = "Multi-Core Stress & GFLOPS Compute",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+
+                        // 90 FPS Menu Badge Trigger
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = Color(0xFF00E676).copy(alpha = 0.16f),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF00E676).copy(alpha = 0.45f)),
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(10.dp))
+                                .clickable { onOpenRefreshRateMenu() }
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Speed,
+                                    contentDescription = "90Hz 90Fps Menu",
+                                    tint = Color(0xFF00E676),
+                                    modifier = Modifier.size(13.dp)
+                                )
+                                Text(
+                                    text = if (displayHz >= 88) "${displayHz}Hz 90 FPS" else "${displayHz}Hz",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = Color(0xFF00E676)
+                                )
+                                Icon(
+                                    imageVector = Icons.Default.Tune,
+                                    contentDescription = "Configure",
+                                    tint = Color(0xFF00E676).copy(alpha = 0.7f),
+                                    modifier = Modifier.size(11.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Text(
+                        text = "Simulate heavy multi-threaded CPU workloads, test thermal stability, and inspect sustained compute performance with a real-time progress indicator.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    if (cpuSimResult != null) {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "Latest Benchmark:",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    text = "${cpuSimResult!!.score} Pts • ${cpuSimResult!!.performanceTier}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    Button(
+                        onClick = onNavigateToCpuSimulator,
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        )
+                    ) {
+                        Icon(
+                            imageVector = if (cpuSimProgress.isRunning) Icons.Default.Sync else Icons.Default.PlayArrow,
+                            contentDescription = "Launch",
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = if (cpuSimProgress.isRunning) "Simulation In Progress (${(cpuSimProgress.percent * 100).toInt()}%) ▶" else "Launch CPU Load Simulator ▶",
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+        }
+
         // Floating Performance HUD Preview / Toggle Banner
         item {
             Card(

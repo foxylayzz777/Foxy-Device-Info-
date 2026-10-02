@@ -13,7 +13,18 @@ data class DeviceSummary(
     val securityPatch: String,
     val buildId: String,
     val kernelVersion: String,
-    val uptimeMillis: Long
+    val uptimeMillis: Long,
+    val androidCodename: String = "Current Release",
+    val buildFingerprint: String = "",
+    val buildType: String = "user",
+    val buildTags: String = "release-keys",
+    val bootloaderVersion: String = "unknown",
+    val radioVersion: String = "unknown",
+    val javaVmVersion: String = "ART",
+    val isRooted: Boolean = false,
+    val isTrebleSupported: Boolean = true,
+    val isSeamlessUpdateSupported: Boolean = true,
+    val selinuxStatus: String = "Enforcing"
 )
 
 data class CpuSpec(
@@ -45,7 +56,13 @@ data class GpuDisplaySpec(
     val densityDpi: Int,
     val screenPhysicalInches: String,
     val hdrCapabilities: String,
-    val isHdrSupported: Boolean
+    val isHdrSupported: Boolean,
+    val aspectRatio: String = "20:9",
+    val xdpi: Float = 420f,
+    val ydpi: Float = 420f,
+    val densityBucket: String = "xxhdpi",
+    val supportedRefreshRates: List<Float> = listOf(60f, 90f, 120f),
+    val isWideColorGamutSupported: Boolean = true
 )
 
 data class MemoryStorageSpec(
@@ -53,7 +70,27 @@ data class MemoryStorageSpec(
     val availableRamBytes: Long,
     val totalStorageBytes: Long,
     val availableStorageBytes: Long,
-    val ramLowMemory: Boolean
+    val ramLowMemory: Boolean,
+    val ramTypeEstimated: String = "LPDDR5 / LPDDR4X Unified",
+    val zramSizeBytes: Long = 0L,
+    val filesystemType: String = "f2fs / ext4"
+)
+
+data class DrmSecuritySpec(
+    val widevineSecurityLevel: String = "L1 (Highest Security)",
+    val widevineVendor: String = "Google Inc.",
+    val widevineVersion: String = "16.0.0",
+    val deviceEncryptionStatus: String = "File-Based Encryption (FBE)",
+    val strongBoxAvailable: Boolean = true,
+    val biometricHardware: String = "Fingerprint & Biometric Face"
+)
+
+data class AudioMediaSpec(
+    val audioOutputs: String = "Stereo Speakers / USB-C / Bluetooth Audio",
+    val spatialAudioSupported: Boolean = true,
+    val hiResAudioSupported: Boolean = true,
+    val supportedVideoDecoders: List<String> = listOf("AV1", "HEVC/H.265", "AVC/H.264", "VP9", "MPEG-4"),
+    val supportedVideoEncoders: List<String> = listOf("HEVC/H.265", "AVC/H.264", "VP8")
 )
 
 data class BatterySpec(
@@ -64,7 +101,8 @@ data class BatterySpec(
     val technology: String,
     val temperatureCelsius: Float,
     val voltageMv: Int,
-    val capacityMah: Double
+    val capacityMah: Double,
+    val fastChargingStatus: String = "Fast Charging Supported"
 )
 
 data class NetworkSpec(
@@ -109,7 +147,30 @@ data class CapabilitiesSpec(
     val hasFaceAuth: Boolean,
     val hasUsbHost: Boolean,
     val hasVibrator: Boolean,
-    val hasCameraFlash: Boolean
+    val hasCameraFlash: Boolean,
+    val hasUwb: Boolean = false,
+    val hasEsim: Boolean = false,
+    val has5gTelephony: Boolean = false,
+    val hasWifiDirect: Boolean = true,
+    val hasWifiAware: Boolean = false,
+    val hasWifiRtt: Boolean = false,
+    val hasMidi: Boolean = true,
+    val hasLowLatencyAudio: Boolean = true,
+    val hasProAudio: Boolean = false,
+    val multiTouchPoints: Int = 10,
+    val hasSustainedPerformance: Boolean = true,
+    val hasHdrDisplay: Boolean = true,
+    val hasHapticFeedback: Boolean = true
+)
+
+data class GnssLocationSpec(
+    val hasGps: Boolean = true,
+    val constellations: List<String> = listOf("GPS (L1/L5)", "GLONASS (G1/G2)", "Galileo (E1/E5a)", "BeiDou (B1/B2a)", "QZSS (L1/L5)", "NavIC (India)"),
+    val hasGnssMeasurements: Boolean = true,
+    val hasDualFrequency: Boolean = true,
+    val supportedProviders: String = "GPS, Network Cell/Wi-Fi, Fused Location Provider",
+    val hasGeofencing: Boolean = true,
+    val hasGnssAntennaInfo: Boolean = false
 )
 
 data class VulkanSpec(
@@ -152,5 +213,8 @@ data class FullDeviceInfo(
         isVulkanHardwareAccelerated = false,
         vulkanDriverStatus = "Not Supported",
         compatibilityDetails = emptyList()
-    )
+    ),
+    val drmSecurity: DrmSecuritySpec = DrmSecuritySpec(),
+    val audioMedia: AudioMediaSpec = AudioMediaSpec(),
+    val gnssLocation: GnssLocationSpec = GnssLocationSpec()
 )

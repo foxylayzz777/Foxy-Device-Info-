@@ -72,14 +72,16 @@ fun SparklineGraph(
         val minVal = 0f
         val range = (maxVal - minVal).coerceAtLeast(1f)
 
-        val stepX = width / (dataPoints.size - 1).coerceAtLeast(1)
+        val padX = 6.dp.toPx()
+        val usableWidth = (width - padX * 2).coerceAtLeast(1f)
+        val stepX = usableWidth / (dataPoints.size - 1).coerceAtLeast(1)
 
         val linePath = Path()
         val fillPath = Path()
 
         val points = dataPoints.mapIndexed { index, value ->
             val normY = (1f - ((value - minVal) / range)).coerceIn(0f, 1f)
-            Offset(index * stepX, normY * (canvasHeight - 12.dp.toPx()) + 6.dp.toPx())
+            Offset(padX + index * stepX, normY * (canvasHeight - 16.dp.toPx()) + 8.dp.toPx())
         }
 
         linePath.moveTo(points.first().x, points.first().y)

@@ -63,6 +63,7 @@ fun LiquidGlassAmbientBackdrop(
         Canvas(modifier = Modifier.fillMaxSize()) {
             val w = size.width
             val h = size.height
+            val baseDim = minOf(w, h)
 
             val rad1 = Math.toRadians(phase1.toDouble())
             val rad2 = Math.toRadians(phase2.toDouble())
@@ -85,9 +86,9 @@ fun LiquidGlassAmbientBackdrop(
                         Color.Transparent
                     ),
                     center = Offset(orb1X, orb1Y),
-                    radius = w * 0.55f
+                    radius = baseDim * 0.55f
                 ),
-                radius = w * 0.55f,
+                radius = baseDim * 0.55f,
                 center = Offset(orb1X, orb1Y)
             )
 
@@ -100,9 +101,9 @@ fun LiquidGlassAmbientBackdrop(
                         Color.Transparent
                     ),
                     center = Offset(orb2X, orb2Y),
-                    radius = w * 0.60f
+                    radius = baseDim * 0.60f
                 ),
-                radius = w * 0.60f,
+                radius = baseDim * 0.60f,
                 center = Offset(orb2X, orb2Y)
             )
 
@@ -114,9 +115,9 @@ fun LiquidGlassAmbientBackdrop(
                         Color.Transparent
                     ),
                     center = Offset(orb3X, orb3Y),
-                    radius = w * 0.45f
+                    radius = baseDim * 0.45f
                 ),
-                radius = w * 0.45f,
+                radius = baseDim * 0.45f,
                 center = Offset(orb3X, orb3Y)
             )
         }

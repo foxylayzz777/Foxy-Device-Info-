@@ -28,9 +28,16 @@ class FoxyAppWidgetProvider : AppWidgetProvider() {
 
     override fun onReceive(context: Context, intent: Intent) {
         super.onReceive(context, intent)
-        if (intent.action == ACTION_REFRESH_WIDGET ||
-            intent.action == AppWidgetManager.ACTION_APPWIDGET_UPDATE) {
-            updateAllWidgets(context)
+        when (intent.action) {
+            ACTION_REFRESH_WIDGET,
+            WidgetAutoRefreshManager.ACTION_AUTO_REFRESH,
+            AppWidgetManager.ACTION_APPWIDGET_UPDATE,
+            Intent.ACTION_BOOT_COMPLETED,
+            Intent.ACTION_SCREEN_ON,
+            Intent.ACTION_USER_PRESENT -> {
+                updateAllWidgets(context)
+                WidgetAutoRefreshManager.scheduleNextRefresh(context)
+            }
         }
     }
 
@@ -38,6 +45,18 @@ class FoxyAppWidgetProvider : AppWidgetProvider() {
         for (appWidgetId in appWidgetIds) {
             updateAppWidget(context, appWidgetManager, appWidgetId)
         }
+        WidgetAutoRefreshManager.scheduleNextRefresh(context)
+    }
+
+    override fun onEnabled(context: Context) {
+        super.onEnabled(context)
+        updateAllWidgets(context)
+        WidgetAutoRefreshManager.scheduleNextRefresh(context)
+    }
+
+    override fun onDisabled(context: Context) {
+        super.onDisabled(context)
+        WidgetAutoRefreshManager.cancelAutoRefresh(context)
     }
 
     companion object {

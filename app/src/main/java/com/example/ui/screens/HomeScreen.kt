@@ -18,11 +18,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.data.model.TestType
 import com.example.ui.components.FoxyHeaderBanner
 import com.example.ui.components.InfoRowItem
 import com.example.ui.components.MetricCard
+import com.example.ui.components.ModernDeviceSpecsSuite
 import com.example.ui.viewmodel.FoxyViewModel
 import java.util.Locale
 
@@ -32,6 +34,8 @@ fun HomeScreen(
     viewModel: FoxyViewModel,
     onNavigateToTests: () -> Unit,
     onNavigateToMonitor: () -> Unit,
+    onNavigateToCpuSimulator: () -> Unit = {},
+    onOpenRefreshRateMenu: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -168,7 +172,8 @@ fun HomeScreen(
                 metrics = metrics,
                 isExpanded = isCpuExpanded,
                 onToggleExpand = { isCpuExpanded = !isCpuExpanded },
-                onNavigateToMonitor = onNavigateToMonitor
+                onNavigateToMonitor = onNavigateToMonitor,
+                onNavigateToCpuSimulator = onNavigateToCpuSimulator
             )
         }
 
@@ -433,89 +438,13 @@ fun HomeScreen(
             }
         }
 
-        // Detailed Hardware Specs Accordion Card
+        // 4. Modern Device System Specifications Suite
         item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
-                    contentColor = MaterialTheme.colorScheme.onSurface
-                )
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { isSpecsExpanded = !isSpecsExpanded },
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Info,
-                                contentDescription = "Specs",
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                            Text(
-                                text = "Device System Specifications",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                        }
-
-                        IconButton(onClick = { isSpecsExpanded = !isSpecsExpanded }) {
-                            Icon(
-                                imageVector = if (isSpecsExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                                contentDescription = "Toggle specs"
-                            )
-                        }
-                    }
-
-                    AnimatedVisibility(visible = isSpecsExpanded) {
-                        Column(modifier = Modifier.padding(top = 12.dp)) {
-                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
-                            Spacer(modifier = Modifier.height(8.dp))
-                            InfoRowItem("Manufacturer", summary?.manufacturer ?: "Android")
-                            InfoRowItem("Model", summary?.model ?: "Generic")
-                            InfoRowItem("Codename", summary?.deviceName ?: "device")
-                            InfoRowItem("Android OS", "Android ${summary?.androidVersion} (API ${summary?.apiLevel})")
-                            InfoRowItem("Security Patch", summary?.securityPatch ?: "Current")
-                            InfoRowItem("Kernel Version", summary?.kernelVersion ?: "Linux")
-                            InfoRowItem("Display Resolution", deviceInfo?.gpuDisplay?.resolution ?: "1080x2400")
-                            InfoRowItem("Refresh Rate", "${deviceInfo?.gpuDisplay?.refreshRateHz ?: 60f} Hz")
-                            InfoRowItem("Screen Density", "${deviceInfo?.gpuDisplay?.densityDpi ?: 420} DPI")
-                            InfoRowItem("Platform Processor", cpu?.socName ?: "Multi-Core")
-                            InfoRowItem("Cluster Topology", cpu?.clustersDescription ?: "Octa-Core")
-                            InfoRowItem("Architecture", cpu?.architecture ?: "arm64-v8a")
-                            InfoRowItem("Microarchitecture", cpu?.coreMicroarchitecture ?: "ARMv8-A")
-                            InfoRowItem("Max Clock Speed", "${cpu?.maxFreqMhz ?: 2400} MHz")
-                            InfoRowItem("Supported ABIs", cpu?.supportedAbis?.joinToString(", ") ?: "arm64-v8a")
-                            InfoRowItem("Process Technology", cpu?.processNodeEstimated ?: "Advanced FinFET")
-                            InfoRowItem("Sensors Count", "${deviceInfo?.sensors?.size ?: 0} sensors")
-                            InfoRowItem("NFC Available", if (deviceInfo?.capabilities?.hasNfc == true) "Yes" else "No")
-                            InfoRowItem("Biometrics", if (deviceInfo?.capabilities?.hasFingerprint == true) "Fingerprint Supported" else "Standard")
-                            InfoRowItem("Vulkan API", deviceInfo?.vulkan?.apiVersionString ?: "N/A")
-                            InfoRowItem("Vulkan Hardware Level", "Level ${deviceInfo?.vulkan?.hardwareLevel ?: 0}")
-
-                            Spacer(modifier = Modifier.height(12.dp))
-                            Button(
-                                onClick = { viewModel.exportReport(context) },
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(12.dp)
-                            ) {
-                                Icon(Icons.Default.Share, contentDescription = "Export")
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text("Export Full Device Report")
-                            }
-                        }
-                    }
-                }
-            }
+            ModernDeviceSpecsSuite(
+                deviceInfo = deviceInfo,
+                onExportReport = { viewModel.exportReport(context) },
+                onOpenRefreshRateMenu = onOpenRefreshRateMenu
+            )
         }
     }
 }
@@ -550,9 +479,11 @@ private fun QuickTestButton(
             Spacer(modifier = Modifier.height(6.dp))
             Text(
                 text = title,
-                style = MaterialTheme.typography.labelMedium,
+                style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         }
     }
@@ -565,7 +496,8 @@ private fun ProcessorCard(
     metrics: com.example.data.model.RealtimeMetrics,
     isExpanded: Boolean,
     onToggleExpand: () -> Unit,
-    onNavigateToMonitor: () -> Unit
+    onNavigateToMonitor: () -> Unit,
+    onNavigateToCpuSimulator: () -> Unit = {}
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -790,40 +722,73 @@ private fun ProcessorCard(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(14.dp))
 
-                    Button(
-                        onClick = onNavigateToMonitor,
+                    Row(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Icon(Icons.Default.Speed, contentDescription = "Monitor", modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Open Real-Time CPU Timeline Graph")
+                        Button(
+                            onClick = onNavigateToCpuSimulator,
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Icon(Icons.Default.Bolt, contentDescription = "Simulate", modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("CPU Load Test")
+                        }
+
+                        OutlinedButton(
+                            onClick = onNavigateToMonitor,
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Icon(Icons.Default.Speed, contentDescription = "Monitor", modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Monitor")
+                        }
                     }
                 }
             }
 
             if (!isExpanded) {
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(10.dp))
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { onToggleExpand() },
-                    horizontalArrangement = Arrangement.Center,
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = "Tap to view full CPU registers, features & instructions",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Icon(
-                        imageVector = Icons.Default.ExpandMore,
-                        contentDescription = "Expand",
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(16.dp)
-                    )
+                    Surface(
+                        onClick = onNavigateToCpuSimulator,
+                        shape = RoundedCornerShape(10.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Icon(Icons.Default.Bolt, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(14.dp))
+                            Text("Simulate Load", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                        }
+                    }
+
+                    Row(
+                        modifier = Modifier
+                            .clickable { onToggleExpand() },
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Full CPU Registers",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Icon(
+                            imageVector = Icons.Default.ExpandMore,
+                            contentDescription = "Expand",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
                 }
             }
         }

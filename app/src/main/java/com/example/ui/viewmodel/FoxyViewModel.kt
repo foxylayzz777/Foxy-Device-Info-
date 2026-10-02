@@ -22,6 +22,7 @@ class FoxyViewModel(application: Application) : AndroidViewModel(application) {
     private val diagnosticsManager = HardwareDiagnosticsManager(application)
     private val appAnalyzerManager = AppAnalyzerManager(application)
     private val benchmarkRunner = BenchmarkRunner(application)
+    private val cpuLoadSimulator = CpuLoadSimulator(application)
 
     // Full device specs
     private val _deviceInfo = MutableStateFlow<FullDeviceInfo?>(null)
@@ -75,6 +76,15 @@ class FoxyViewModel(application: Application) : AndroidViewModel(application) {
     private val _benchmarkProgress = MutableStateFlow(Pair("Ready to benchmark", 0.0f))
     val benchmarkProgress: StateFlow<Pair<String, Float>> = _benchmarkProgress.asStateFlow()
 
+    // CPU Load Simulation & Benchmark
+    private val _cpuSimulationProgress = MutableStateFlow(CpuSimulationProgress())
+    val cpuSimulationProgress: StateFlow<CpuSimulationProgress> = _cpuSimulationProgress.asStateFlow()
+
+    private val _cpuSimulationResult = MutableStateFlow<CpuLoadSimulationResult?>(null)
+    val cpuSimulationResult: StateFlow<CpuLoadSimulationResult?> = _cpuSimulationResult.asStateFlow()
+
+    private var simulationJob: Job? = null
+
     // Floating HUD mini overlay state
     private val _isFloatingHudEnabled = MutableStateFlow(false)
     val isFloatingHudEnabled: StateFlow<Boolean> = _isFloatingHudEnabled.asStateFlow()
@@ -108,6 +118,40 @@ class FoxyViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _themeMode = MutableStateFlow(loadSavedThemeMode())
     val themeMode: StateFlow<com.example.ui.theme.AppThemeMode> = _themeMode.asStateFlow()
+
+    // 90Hz & High Refresh Rate Display Controls
+    private fun loadSavedRefreshRatePreference(): com.example.ui.components.RefreshRatePreference {
+        val saved = prefs.getString("pref_refresh_rate_mode", com.example.ui.components.RefreshRatePreference.FORCE_90.name)
+        return try {
+            com.example.ui.components.RefreshRatePreference.valueOf(saved ?: com.example.ui.components.RefreshRatePreference.FORCE_90.name)
+        } catch (_: Exception) {
+            com.example.ui.components.RefreshRatePreference.FORCE_90
+        }
+    }
+
+    private val _refreshRatePreference = MutableStateFlow(loadSavedRefreshRatePreference())
+    val refreshRatePreference: StateFlow<com.example.ui.components.RefreshRatePreference> = _refreshRatePreference.asStateFlow()
+
+    private val _customDisplayModeId = MutableStateFlow(prefs.getInt("pref_custom_mode_id", -1))
+    val customDisplayModeId: StateFlow<Int> = _customDisplayModeId.asStateFlow()
+
+    private val _isFpsOverlayEnabled = MutableStateFlow(prefs.getBoolean("pref_fps_overlay_enabled", false))
+    val isFpsOverlayEnabled: StateFlow<Boolean> = _isFpsOverlayEnabled.asStateFlow()
+
+    fun setRefreshRatePreference(pref: com.example.ui.components.RefreshRatePreference, customModeId: Int? = null) {
+        _refreshRatePreference.value = pref
+        _customDisplayModeId.value = customModeId ?: -1
+        prefs.edit()
+            .putString("pref_refresh_rate_mode", pref.name)
+            .putInt("pref_custom_mode_id", customModeId ?: -1)
+            .apply()
+    }
+
+    fun toggleFpsOverlay(enabled: Boolean? = null) {
+        val next = enabled ?: !_isFpsOverlayEnabled.value
+        _isFpsOverlayEnabled.value = next
+        prefs.edit().putBoolean("pref_fps_overlay_enabled", next).apply()
+    }
 
     private var monitorJob: Job? = null
 
@@ -204,6 +248,47 @@ class FoxyViewModel(application: Application) : AndroidViewModel(application) {
                 _isBenchmarking.value = false
             }
         }
+    }
+
+    // CPU Load Simulation Execution
+    fun startCpuLoadSimulation(
+        durationSec: Int = 10,
+        threadsCount: Int = Runtime.getRuntime().availableProcessors(),
+        intensityPct: Int = 100
+    ) {
+        if (_cpuSimulationProgress.value.isRunning) return
+        simulationJob?.cancel()
+        simulationJob = viewModelScope.launch {
+            try {
+                val res = cpuLoadSimulator.runSimulation(
+                    durationSeconds = durationSec,
+                    threadsCount = threadsCount,
+                    intensityPercent = intensityPct
+                ) { progress ->
+                    _cpuSimulationProgress.value = progress
+                }
+                _cpuSimulationResult.value = res
+            } catch (_: Exception) {
+                _cpuSimulationProgress.value = _cpuSimulationProgress.value.copy(
+                    isRunning = false,
+                    statusMessage = "Simulation interrupted"
+                )
+            }
+        }
+    }
+
+    fun stopCpuLoadSimulation() {
+        cpuLoadSimulator.cancelSimulation()
+        simulationJob?.cancel()
+        _cpuSimulationProgress.value = _cpuSimulationProgress.value.copy(
+            isRunning = false,
+            statusMessage = "Simulation stopped"
+        )
+    }
+
+    fun clearCpuSimulationResult() {
+        _cpuSimulationResult.value = null
+        _cpuSimulationProgress.value = CpuSimulationProgress()
     }
 
     fun toggleFloatingHud() {
